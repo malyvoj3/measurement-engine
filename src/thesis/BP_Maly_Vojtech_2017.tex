@@ -1,0 +1,1353 @@
+% options:
+% thesis=B bachelor's thesis
+% thesis=M master's thesis
+% czech thesis in Czech language
+% slovak thesis in Slovak language
+% english thesis in English language
+% hidelinks remove colour boxes around hyperlinks
+
+\documentclass[thesis=B,czech]{FITthesis}[2012/06/26]
+
+\usepackage[cp1250]{inputenc} % LaTeX source encoded as Windows-1250
+
+\usepackage{graphicx} %graphics files inclusion
+\usepackage{amsmath} %advanced maths
+% \usepackage{amssymb} %additional math symbols
+
+\usepackage{dirtree} %directory tree visualisation}
+\usepackage{algorithm,algorithmicx,algpseudocode}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{diagbox}
+\usepackage{pdfpages}
+\definecolor{pblue}{rgb}{0.13,0.13,1}
+\definecolor{pgreen}{rgb}{0,0.5,0}
+\definecolor{pred}{rgb}{0.9,0,0}
+\lstset{escapeinside={(*@}{@*)}}
+\lstset{language=Java,
+	showspaces=false,
+	showtabs=false,
+	breaklines=true,
+	showstringspaces=false,
+	breakatwhitespace=true,
+	tabsize=4,
+	commentstyle=\color{pgreen},
+	keywordstyle=\color{pblue},
+	stringstyle=\color{pred},
+	basicstyle=\fontsize{11}{13}\ttfamily,
+}
+\definecolor{gray}{rgb}{0.4,0.4,0.4}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.6}
+\definecolor{cyan}{rgb}{0.0,0.6,0.6}
+\lstdefinelanguage{XML}
+{
+	morestring=[b]",
+	morestring=[s]{>}{<},
+	morecomment=[s]{<?}{?>},
+	stringstyle=\color{black},
+	identifierstyle=\color{darkblue},
+	keywordstyle=\color{cyan},
+	morekeywords={xmlns,version,type}% list your attributes here
+}
+
+% % list of acronyms
+% \usepackage[acronym,nonumberlist,toc,numberedsection=autolabel]{glossaries}
+% \iflanguage{czech}{\renewcommand*{\acronymname}{Seznam pou{\v z}it{\' y}ch zkratek}}{}
+% \makeglossaries
+
+\renewcommand{\lstlistingname}{Algoritmus}% Listing -> Algorithm
+\newcommand{\tg}{\mathop{\mathrm{tg}}} %cesky tangens
+\newcommand{\cotg}{\mathop{\mathrm{cotg}}} %cesky cotangens
+
+\department{Katedra teoretické informatiky}
+\title{Nástroj pro mìøení datové kvality pomocí SQL dotazù}
+\authorGN{Vojtìch} %(køestní) jméno (jména) autora
+\authorFN{Malı} %pøíjmení autora
+\authorWithDegrees{Vojtìch Malı} %jméno autora vèetnì souèasnıch akademickıch titulù
+\supervisor{Ing.~Tereza Mlynáøová,~Ph.D.}
+\acknowledgements{Tímto bych rád podìkoval spoleènosti Simplity \hbox{s.\,r.\,o.}, pøedevším vedoucí práce, Ing.~Tereze Mlynáøové,~Ph.D., a~Davidu Šastnému, za jejich ochotu a pomoc pøi realizaci této bakaláøské práce. }
+\abstractCS{Tato práce se zamìøuje na tvorbu nástroje pro spouštìní úloh, jen mìøí datovou kvalitu. Probrány jsou rùzné druhy spouštìní úloh s dùrazem na paralelizaci. Nástroj je serverová aplikace psaná v programovacím jazyku Java. Souèástí práce je také analıza knihoven pro integraci aplikací a jejich zhodnocení. }
+\abstractEN{This thesis deals with creating an engine for executing jobs, which measures data quality. Various methods of job execution are discussed with emphasis laid on parallelization. The engine is a server standalone application written in Java programming language. Analysis of libraries for application integration and their evaluation are also part of the thesis. }
+\placeForDeclarationOfAuthenticity{V~Praze}
+\declarationOfAuthenticityOption{5} %volba Prohlášení (èíslo 1-6)
+\keywordsCS{aplikace, mìøení datové kvality, orientovanı acyklickı graf, paralelní, reaktivní programování, Spring Integration, Java}
+\keywordsEN{application, data quality measurements, directed acyclic graph, parallel, reactive programming, Spring Integration, Java}
+
+\begin{document}
+
+% \newacronym{CVUT}{{\v C}VUT}{{\v C}esk{\' e} vysok{\' e} u{\v c}en{\' i} technick{\' e} v Praze}
+% \newacronym{FIT}{FIT}{Fakulta informa{\v c}n{\' i}ch technologi{\' i}}
+
+\begin{introduction}
+V~dnešní dobì pøeváná vìtšina firem vyuívá ke~svému provozu informaèní systémy. Chyby v~jejich systému mohou vést ke~generování neadekvátních dat, a~to~stejnì tak~i~v~pøípadì špatného pouívání systému. Èím vìtší firma je, tím operuje s~objemnìjším mnostvím dat, a~tak vzniká více dat nesprávnıch -- sniuje se datová kvalita. 
+
+\par U~spoleèností, jakımi jsou napø. celosvìtové banky, je práce s~takovımi neadekvátními daty problémem vedoucím a k~nìkolika milionovım ztrátám.
+Dle spoleènosti Gartner\cite{gartner} a~jejich studie zaloené na~informacích z~více ne 140 spoleèností, jsou prùmìrné roèní ztráty zpùsobené nízkou datovou kvalitou okolo 8 miliónu americkıch dolarù.
+V~tuto chvíli pøichází v~úvahu mìøení datové kvality.
+
+\par Práce je urèena pro firmu Simplity \hbox{s.\,r.\,o.}, která ji vyuije ve své aplikaci Quality. Tato aplikace slouí jejich zákazníkùm ke~sledování a~mìøení datové kvality.
+
+\par Téma jsem si zvolil, nebo spoleènosti èím dál více vyuívají znalosti získané ze~svıch dat. Jako pøíklad mohu uvést analıza nákupù zákazníkù s~Tesco Clubcard. Aby tyto znalosti byly pravdivé, musí mít data dobrou datovou kvalitu.
+Mnoho spoleèností datovou kvalitu neøeší, ale cílem spoleènosti Simplity je~nauèit firmy porozumìt datùm a~správnì se o~nì starat.
+
+\par V~práci se~zabıvám analızou aplikace Jenkins~CI, knihovny Spring Integration a~reaktivním programování. Nabyté znalosti mi poslouí k~implementaci nástroje na~mìøení datové kvality, kterı spouští úlohy, jejich vıpoèet slouí k~vyhodnocování stavu datového úloištì. Úlohy obsahují mezi sebou závislosti a~tvoøí tak orientovanı acyklickı graf.
+
+\par Následující kapitola~\ref{popis} zahrnuje vysvìtlení pojmù \textit{business intelligence} a~datová kvalita. Dále je~v~této kapitole popsán vyvíjenı nástroj a~poadavky na~jeho implementaci. Ke~konci se podíváme na~podobné, ji existující nástroje.
+
+\par Kapitola~\ref{analyzaSection} je~vìnována popisu aplikace Jenkins~CI a~její architektuøe. Také je~pøedstaven \textit{framework} Spring Integration a~reaktivní programování -- pøedevším Reactor a~Spring Webflux. Vısledkem této kapitoly je~porovnání získanıch vìdomostí a~jejich následné doporuèení pro~vıvoj nástroje.
+
+
+V~následující kapitole~\ref{graphSection} jsou popsány algoritmy pro~implementaci úloh a~jejich spouštìní. Nejdøíve je~popsán zpùsob, jakım se~budou úlohy v~nástroji reprezentovat, poté algoritmy, kterımi mohou bıt úlohy spouštìny.
+
+Tuto práci uzavírá kapitola~\ref{realizationSection}, v~ní je~pøedstaven zpùsob realizace. Kapitola je~tvoøena popisem zvolené technologie a~klíèovıch tøíd aplikace. Konec kapitoly se~zabıvá mìøením a~testováním nástroje, tedy rùznıch druhù spouštìní úloh, které jsou v~závìru porovnány.
+
+\end{introduction}
+
+
+\chapter{Popis problému, specifikace cíle}\label{popis}
+
+V~této kapitole si~struènì vysvìtlíme pojem \textit{Business intelligence}, co nám umoní lépe pochopit problematiku datové kvality a~více osvìtlit vyuití vyvíjeného nástroje. V~druhé èásti si vysvìtlíme, co~to~je~datová kvalita a její dimenze. Poté naváeme popisem vyvíjeného nástroje a~urèíme si poadavky, které má nástroj splòovat. Na~konci kapitoly zjistíme, jestli ji existují nìjaké podobné nástroje.
+
+\section{Business intelligence}
+
+\textit{Business intelligence} (dále jen BI) je~mnoina konceptù a~metodik, které se~pouívají pøi~práci s~firemními daty. Úèelem tìchto konceptù a~metodik je~konvertovat velké mnoství dat na~znalosti, a~tím zlepšit rozhodovací proces, kterı zvıší obchodní úspìch spoleènosti.\cite{biSQL}
+
+Proces BI je~tvoøen z~nìkolika èástí, viz~obrázek~\ref{fig8}. Na~zaèátku BI procesu je~zapotøebí datovıch zdrojù (angl.~\textit{data sources}), kterımi mohou napø.~bıt databáze, tabulky, soubory a~další. Následnì jsou data z~tìchto zdrojù získána, transformována a~nahrána do~datového skladu. Této èásti se øíká ETL (\textit{extract, transform, load} -- získat, transformovat, nahrát).
+
+Na~první pohled je~pojem datovı sklad (ang.~\textit{data warehouse} -- DWH) pomìrnì jasnı. Je~to~velké mnoství dat shromádìnıch na~jednom místì. Pro~jistotu ale pøidávám formální definici datového skladu:
+\\
+
+\textit{\uv{Datovı sklad je~podnikovì strukturovanı depozitáø subjektovì orientovanıch, integrovanıch, èasovì promìnnıch historickıch dat pouitıch pro~získávání informací a~podporu rozhodování.}}\cite{biSQL}
+\\
+
+Nad~naplnìnım datovım skladem probíhají ji rùzné BI metodiky, z~jejich vıstupù (napø.~analızy a~reporty) si firmy mohou najít skryté souvislosti èi~predikce a~zlepšit tím svoje postavení na~trhu.
+
+\clearpage
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.90]{bi.jpeg}
+	\end{center}
+	\caption[Prùbìh procesu \textit{business intelligence}]{Prùbìh procesu \textit{business intelligence}\cite{biFlow}}
+	\label{fig8}
+\end{figure}
+
+Mìøení datové kvality má své uplatnìní ve~fázi ETL pøi~integraci dat do~datového skladu, kdy se data mohou ještì upravovat, a~tím datovou kvalitu zvıšit. Nekvalitní data v~datovém skladu mohou vést ke~špatné analıze a~ke~špatnım rozhodnutím firmy následovanıch finanèní ztrátou.
+
+\section{Datová kvalita a její dimenze}
+
+Definovat datovou kvalitu (angl.~\textit{data quality}) není lehké. Obecnì lze øíci, e~data jsou kvalitní, pokud splòují poadavky uivatelù na~jejich pouití.\cite{dq}
+
+Datová kvalita se urèuje z~pohledu nìkolika èástí, tedy tzv.~dimenzí. Existuje mnoho dimenzí datové kvality, nicménì my si pøedstavíme jen ètyøi nejzákladnìjší na~pøíkladu z~knihy~\cite{dq}:
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|l|l|l|l|l|l|}
+			\hline
+			\textbf{Id} & \textbf{Název}              & \textbf{Reisér} & \textbf{Rok}  & \textbf{\#Pøedìlávek} & \textbf{Poslední}  \\ \hline
+			1  & Casblanca          & \cellcolor{blue!25}Weir    & \cellcolor{blue!25}1942 & 3            & \cellcolor{blue!25}1940      \\ \hline
+			2  & Dead poets society & \cellcolor{blue!25}Curtiz  & 1989 & 0            & NULL      \\ \hline
+			3  & \cellcolor{blue!25}Rman Holiday       & Wylder  & 1953 & 0            & NULL      \\ \hline
+			4  & Sabrina            & \cellcolor{blue!25}null    & 1964 & \cellcolor{blue!25}0            & \cellcolor{blue!25}1985      \\
+			\hline
+		\end{tabular}
+		\caption{Ukázka dat s problémy datové kvality }
+		\label{fig9}
+	\end{center}
+\end{table}
+
+V~tabulce~\ref{fig9} jsou popsány vztahy mezi filmy -- jejich jméno, reisér, rok produkce, poèet pøedìlávek a~rok vydání poslední pøedìlávky. Problémy s~datovou kvalitou jsou v~buòkách tabulky zvıraznìny modøe.
+
+Ve~sloupci \texttt{Název} je~chyba s~filmem \texttt{Rman Holiday}. Je zde pøeklep, film se toti jmenuje \texttt{Roman Holiday}. Tato chyba spadá do~dimenze \textbf{pøesnosti (\textit{accuracy})}. Problém stejné dimenze, tedy pøesnosti, je~i~prohození reisérù mezi filmy 1 a~2. \texttt{Wier} reíroval film~2, zatímco \texttt{Curtiz} film~1.
+
+U~filmu è.~4 reisér chybí zcela. Tato chyba je z~dimenze \textbf{úplnosti (\textit{completeness})}. Dále je problém u~filmu è.~4 s~dimenzí \textbf{aktuálnosti (\textit{concurrency})}, nebo poèet pøedìlávek je~stále roven~$ 0 $, i~kdy byla alespoò jedna dotoèena.
+
+Poslední dva problémy jsou z~dimenze \textbf{konzistence (\textit{consistency})}. U~fil\-mu è.~1 nemùe bıt \texttt{Poslední} menší ne \texttt{Rok}, u~filmu è.~4 zase nemùe bıt \texttt{Poslední} jiná hodnota ne \texttt{NULL}, protoe poèet pøedìlávek je~roven~$ 0 $.
+
+Pøesnost, úplnost, aktuálnost a~konzistence jsou tedy ètyøi dimenze datové kvality. Existuje jich více, jako napø.~integrace èi~duplikace, ale pro~základní pøedstavu toho, co~to~datová kvalita je, byl tento pøíklad dostaèující.\cite{dq}
+
+\section{Hlavní cíle}
+
+Cílem bakaláøské práce je vytvoøit nástroj pro~spouštìní úloh mìøících datovou kvalitu. Jednotlivé úlohy øeší spouštìní rùznıch typù mìøení, které slouí pro~vyhodnocení stavu datové kvality ve~zkoumaném úloišti dat. 
+\par Základním typem úloh je SQL (\textit{Structured Query Language}) dotaz nad~databází, jeho vısledkem je èíslo. Vısledky tìchto SQL dotazù však mohou bıt obsaeny v~jiném parametrizovaném SQL dotazu. Viz ukázka v~tabulce \ref{tab1}, kde ID je unikátní identifikátor úlohy. Úloha è.~1 a~2 jsou pak základní SQL úlohy a~úloha è.~3 je parametrizovaná SQL úloha, která vyuívá ve~své WHERE podmínce vısledku z~úlohy 1. 
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|l|l|l|}
+			\hline
+			\textbf{ID} & \textbf{SQL dotaz}                           \\ \hline
+			1 & select avg(discount) from orders                 \\ \hline
+			2 & select min(discount) from orders                 \\ \hline
+			3 & select count(*) from orders where discount > \{1\} \\ \hline
+		\end{tabular}
+		\caption{Ukázka SQL úloh}\label{tab1}
+	\end{center}
+\end{table}
+
+\par Tøetím typem úlohy, kterım se budu v~práci zabıvat, je agregovanı vısledek z~vısledku jinıch úloh. Vstupem mu budou vısledky jinıch úloh (jak~SQL, tak parametrizovanıch SQL, èi jinıch agregovanıch) a~váha kadé nich, z~èeho se vypoèítá váenı prùmìr podle vzorce \ref{eq1}, kde \(x_i\) je vısledek a~\(\omega_i\) váha dané úlohy \(i\):
+
+\clearpage
+
+\begin{eqnarray}\label{eq1}
+\bar{x} & = &\frac{\sum\limits_{i=1}^n \omega_i x_i}{\sum\limits_{i=1}^n \omega_i} \cdot
+\end{eqnarray}
+
+\par Vzhledem k~jednotlivım závislostem mezi úlohami vzniká orientovanı graf. Pøikládám definici orientovaného grafu dle \cite{kolar}:
+\\
+
+\textbf{Definice:} \textit{\uv{Nech $H$ a~$U$ jsou libovolné disjunktní mnoiny a~$ \sigma:H \rightarrow U \times U $ zobrazení. \textbf{Orientovanım grafem} nazveme uspoøádanou trojici $G=\langle H,U,\sigma \rangle$, prvky mnoiny $H$ nazıváme orientovanımi hranami grafu $G$, prvky mnoiny $U$ uzly grafu $G$ a~zobrazení $\sigma$ incidencí grafu $G$.}}
+\\
+
+Jednotlivé úlohy tedy tvoøí uzly grafu a~závislosti mezi nimi pøedstavují hrany grafu. Jestlie pro~$ h \in H $ je $ \sigma(h)=(u,v) $, pak úloha $ u $ potøebuje ke~svému vıpoètu vısledek z~úlohy~$ v $. 
+
+\par Vstupem máme zaruèeno, e graf nebude obsahovat cyklus (krunici). Cyklem v~grafu rozumíme posloupnost uzlù a~hran $ S=\langle u_{0},h_{1},u_{1},\dots,h_{n},u_{n}=u_{0} \rangle $, kde uzly $ u_{0},\dots,u_{n-1} $ jsou navzájem rùzné uzly grafu $ G $, a~kde $ h_{i} \in H $, $ \sigma(h_{i})=(u_{i-1},u_{i}) $ pro~kadé $ i=1,2,\dots,n $. Graf bez cyklu nazıváme \textbf{acyklickı}.\cite{kolar}
+\par Vıslednı graf mùe tedy vypadat napø.~jako na obrázku~\ref{fig1}, v~nìm lutı uzel znaèí SQL úlohu, oranovı parametrizovanou SQL úlohu a~modrı agregovanou úlohu.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.65]{graph1.eps}
+	\end{center}
+	\caption{Ukázková struktura úlohy AGR1}
+	\label{fig1}
+\end{figure}
+
+\clearpage
+
+\par Nìkteré úlohy jsou na~sobì nezávislé a~nástroj je tedy bude spouštìt paralelnì. Na~obrázku \ref{fig1} se mohou úlohy vykonávat napø. v~takovémto poøadí:
+
+\begin{enumerate}
+	\item Všechny SQL úlohy v~jakémkoliv poøadí. 
+	\item Parametrizovaná SQL úloha pSQL po~vypoèítání úloh SQL3 a~SQL4. 
+	\item Agregovaná úloha AGR2 po~vypoèítání úloh pSQL, SQL5 a~SQL2. 
+	\item Agregovaná úloha AGR1 po~vypoèítání úloh pSQL, AGR2, SQL1 a~SQL2.
+\end{enumerate}
+
+\par Nástroj musí do~budoucna poèítat s~tím, e bude integrován s~jinou aplikací, která mu bude dodávat úlohy ke~spuštìní. Nástroj bude této aplikaci zpìt posílat informace, kdy daná úloha byla zaøazena do~spouštìcí fronty, zda-li pøi~vıpoètu úlohy došlo k~chybì, anebo je ji dokonèená, popø. jakého vısledku dosáhla. Integrace by mìla probíhat pøes REST (\textit{Representational state transfer}) rozhraní, které vyuívá HTTP (\textit{Hypertext Transfer Protocol}). Integrace však není souèástí práce, jeliko by rozsahem pøesáhla velikost bakaláøské práce. Poadavkem je jen najít správnı \textit{framework}, nebo-li aplikaèní rámec, kterı obsahuje podpùrné programy a rozhraní.
+
+\section{Poadavky nástroje}\label{pozadavkySection}
+
+\par Shrnutí a~upøesnìní jednotlivıch poadavkù na~nástroj:
+
+\begin{enumerate}
+	\item Nástroj definuje základní rozhraní úloh, aby byl schopen pouívat dodateènì implementované úlohy.
+	\item Nástroj obsahuje tøi základní implementace úloh:
+	\begin{enumerate}
+		\item SQL dotaz nad~databází s~vısledkem;
+		\item Parametrizovanı SQL dotaz obsahující vısledky jinıch úloh;
+		\item Vıpoèet agregovaného vısledku z~vısledkù jinıch úloh.
+	\end{enumerate}
+	\item Úlohy tvoøí orientovanı acyklickı graf a~ musí tak bıt pøevedeny do~dobøe zpracovatelného formátu.
+	\item Nástroj úlohy spouští a~vıpoèet nezávislıch úloh probíhat paralelnì.
+	\item Nástroj je implementován v~jazyce Java.	
+	\item Nástroj nemusí bıt pøipraven na integraci s jinou aplikací, ale je potøeba zanalyzovat monosti integrace pøes rozhraní REST.
+\end{enumerate}
+
+\section{Podobné nástroje}
+\par V~souèasné dobì neexistuje ádnı nástroj jen by vyhovoval zadanım poadavkùm.
+\par Na~trhu jsou dostupné aplikace, které mìøí a~monitorují datovou kvalitu. Mezi nì napø.~patøí Data Quality od~Informatica\cite{informatica}, InfoSphere Information Server for Data Quality od~IBM\cite{ibm}, Ataccama\cite{ataccama} èi Trillium Quality\cite{trillium}. ádnı z~tìchto softwarù ale není \textit{open source}, tedy nemají otevøenı zdrojovı kód, a~nelze tedy zjistit, jakım zpùsobem je u~nich datová kvalita mìøena.
+\par Co však spadá pod licenci \textit{open source} a~podobá se oèekávanému nástroji zpùsobem zpracování úloh, je aplikace Jenkins CI\cite{jenkins} a~její systém \textit{job} a~\textit{pipeline}. Detailnìji je Jenkins popsán v~následující kapitole \ref{jenkinsSection}.
+
+\chapter{Analıza knihoven}\label{analyzaSection}
+
+Úvod kapitoly je~tvoøe popisem aplikace Jenkins a~jeho architektury. Následnì se zabıvám analızou knihovny Spring Integration a~reaktivním programováním. Získané informace zhodnotím a~urèím jestli je~dobré pouít èást aplikace Jenkins, Spring Integration èi~Spring Webflux.
+
+\section{Jenkins CI}\label{jenkinsSection}
+
+Jenkins CI je \textit{open source} server, kterı se pouívá k~automatizování rùznıch druhù úloh, jakımi jsou napø. sestavení, otestování a~nasazení softwaru. Je~vytvoøen v~programovacím jazyku Java a~lze ho tedy pouívat na~jakémkoliv stroji, na~nìm je nainstalován Java Runtime Environment (JRE).\cite{jenkinsDoc} Hlavní vyuití programu Jenkins spoèívá v~automatizování vıvoje softwaru pomocí kontinuální integrace (angl.~\textit{Continuous integration} -- CI).
+
+\par Kontinuální integrace je zaloena na~èastém kompilování zdrojového kódu projektu, obvykle následovaném spuštìním testù.\cite{ci} Nejèastìjší pøípad nastává ve~chvíli, kdy programátor pošle novou èást kódu do~projektového repositáøe (napø.~GIT), Jenkins poté vytvoøí nìkolik úloh (angl. \textit{jobs}), které se spouští postupnì za~sebou, napøíklad:
+\begin{enumerate}
+	\item Staení kódu z~repositáøe;
+	\item sestavení projektu;
+	\item spuštìní testù;
+	\item vyhodnocení kvality kódu;
+	\item poslání emailu s~vısledky autorovi.
+\end{enumerate}
+
+\par Velkou vıhodou Jenkins CI je jeho velká popularita, která vede k~tomu, e komunita vıvojáøù je velmi aktivní,
+a~tudí existuje a~stále vzniká velké mnoství doplòkù, které otevírají mnoho moností jakım zpùsobem Jenkins vyuít.\cite{ci} 	
+
+\par Základním stavebním kamenem aplikace Jenkins je \textit{job}, jinak také \textit{project}, nebo-li úloha. Je to práce, kterou má Jenkins vykonat -- jakı pøíkaz pustit v~pøíkazové øádce, testování projektu, publikování vısledkù testù, atd. \textit{Job} po~skonèení vytváøí vısledek zvanı \textit{build}.\cite{jenkinsDoc}
+  
+\par Druhım dùleitım prvkem jsou tzv.~\textit{pipelines}, které umoòují velikou uivatelskou konfiguraci. Jsou to jednotlivé kroky, které Jenkins spouští po~logickıch celcích. Vznikají zapsáním kódu pomocí Pipeline DSL do~souboru \textit{Jenkinsfile}. Pipeline DSL (Doménovì specifickı jazyk) vychází z~jazyka Groovy a~lze v~nìm tedy pouít známe konstrukce jako podmínky, cykly èi funkce. Nejlepší bude ukázat pøíklad zapsané \textit{pipeline} \cite{jenkinsDoc}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+pipeline {
+	agent any (*@\label{pipeline-agent}@*) 
+	
+	stages (*@\label{pipeline-stages}@*){
+		stage('Build') (*@\label{pipeline-stage}@*){ 
+			steps (*@\label{pipeline-steps}@*){ 
+				sh 'make' (*@\label{pipeline-sh}@*)
+			}
+		}
+		stage('Test'){
+			steps {
+				sh 'make check'
+				junit 'reports/**/*.xml' (*@\label{pipeline-junit}@*)
+			}
+		}
+		stage('Deploy') {
+			steps {
+				sh 'make publish'
+			}
+		}
+	}
+}
+\end{lstlisting}
+\end{algorithm}
+
+
+\par Pøíkaz na~øádce \ref{pipeline-agent} øíká, aby Jenkins alokoval nìjakı uzel, v nìm bude \textit{pipeline} spuštìna.
+\par Øádka \ref{pipeline-stages} rozdìlí \textit{pipeline} do~jednotlivıch logickıch celkù, definovanıch slovem \textit{stage} \ref{pipeline-stage}.
+\par \textit{Steps} \ref{pipeline-steps} jsou kroky, které se mají ve~\textit{stage} provést. Mohou bıt vykonány i~paralelnì.
+\par \textit{Sh} \ref{pipeline-sh} spouští shellovı pøíkaz.
+\par \textit{Junit} \ref{pipeline-junit} je krok, kterı lze vykonat pomocí doplòku jUnit plugin, jeho úkolem je sjednotit vısledky všech testù.
+\\
+
+\par \textit{Job} i~\textit{pipeline} mohout mít nastavenı \textit{trigger}, nebo-li spouštìè. \textit{Trigger} je~kritérium, které splnìním spustí jinı \textit{job} nebo \textit{pipeline}. \textit{Trigger} mùe bıt napø.~dosaení urèitého èasu, aktualizace repositáøe èi dokonèení jiného \textit{job} nebo \textit{pipeline}.\cite{jenkinsDoc}
+
+\par Dalšími dùleitımi pojmy jsou \textit{downstream} a~\textit{upstream}. \textit{Downstream} je~\textit{job} nebo \textit{pipeline}, kterı se spustí bìhem vykonávání jiného \textit{job} nebo \textit{pipeline}. \textit{Upstream} je~opakem, tedy je~to \textit{job} èi~\textit{pipeline}, kterı spouští bìhem svého vykonávání jiné \textit{jobs} a~\textit{pipelines}.\cite{jenkinsDoc}
+
+\par Jenkins je~sestaven z~nìkolika \textit{nodes} (èesky uzlù), tedy strojù, které jsou schopny spouštìt \textit{jobs} nebo \textit{pipelines}. Jenkins pracuje na~architektuøe Master/Slave, tzn.~obsahuje jeden centrální uzel zvanı \textit{master}, kterı má uloenou konfiguraci, stará se o~nahrávání doplòkù, zobrazuje uivatelské rozhraní a~rozdává práci svım \textit{slaves} (èesky otrokùm). \textit{Slaves} (\textit{slave agents}) jsou uzly, které jsou pøipojeny k~uzlu \textit{master}, a~spouští úlohy, které jim \textit{master} zadá.\cite{jenkinsDoc}
+
+\par Podle vıše zmínìnıch vlastností aplikace Jenkins lze najít podobnost s~nástrojem, kterı je cílem této práce.
+Nástroj má také za~úkol spouštìt nìjaké úlohy a~zpracovávat jejich vısledky. Vıpoèet jedné úlohy mùe spustit úlohu jinou. Takovı nástroj bude pracovat jako \textit{slave} pro~jinou aplikaci, s~ní~bude spojenı a~která mu~bude posílat úlohy ke~spuštìní.
+Dokonce i~\textit{pipelines} lze pøirovnat ke~zpracování úloh, jeliko nástroj musí po~kadém logickém celku (zaøazení do~fronty, spuštìní, dokonèení) odeslat nìjaké informace do~uzlu \textit{master}.
+
+\section{Spring Integration}\label{siSection}
+
+Spring Integration je \textit{open source framework} pro integraci podnikovıch aplikací pomocí \textbf{\textit{message-driven}} (zprávami øízené) architektury. Základem \textit{mess\-age-driven} architektury je~komunikace mezi jednotlivımi èástmi aplikací prostøednictvím zpráv (anglicky \textit{messages}). To vede k~jednoduššímu øešení problémù díky podobnosti s~reálnım svìtem, v~nìm jsme zvyklí pracovat jako \textit{message-driven} -- odpovídáme na~telefonáty, emaily, zprávy nebo na~nìjaké události.\cite{inaction}
+
+Spring Integration je~postaven na~dvou gigantech, jimi jsou Spring Frame\-work\cite{spring}, jen je~populární \textit{framework} pro~vytváøení podnikovıch Java aplikací, a~kniha \textit{Enterprise Integration Patterns}\cite{eia}, která je~standardem v~oblasti integrace.\cite{inaction}
+
+\subsection{Architektura}
+
+\par Spring Integration se skládá ze dvou èástí. 
+
+\par První je~\textit{messaging framework}, kterı umoòuje \textit{message-driven} komunikaci v~rámci aplikace, tedy v~jedné instanci Java Virtual Machine (JVM). Jednotlivé komponenty mohou mezi sebou komunikovat prostøednictvím zpráv a~nemusí øešit serializaci (napø.~pøevod do~\textit{Extensible markup languag}e (XML)), nebo zprávy vìtšinou obsahují \textit{plain old Java object} (POJO).\cite{inaction} 
+
+\par Druhou èástí je~integrace nìkolika aplikací -- více instancí~JVM. Ta~probíhá pomocí rùznıch adaptérù, které transformují obsah zpráv na~tvar, kterı cílová aplikace pøijímá.\cite{inaction} Spring Integration~4.3 je~dodáván vèetnì mnoha adaptérù napø:
+
+\begin{itemize}\label{adapters}
+	\item Filesystem, FTP, FTPS nebo SFTP,
+	\item HTTP (REST),
+	\item Java Database Connectivity (JDBC),
+	\item Mail (POP3, IMAP a SMTP),
+	\item Transmission Control Protocol (TCP),
+	\item Twitter,
+	\item User Datagram Protocol (UDP),
+	\item Web Services (SOAP),
+	\item Web Sockets.
+\end{itemize}
+
+Více viz~tabulka \cite{siDoc-tabulka}.
+
+\par Ze~Spring Integration bychom v~našem nástroji vyuili právì její druhou èást, tedy integraci více JVM, kde náš nástroj musí komunikovat s~jinou aplikací.
+
+\subsection{Hlavní komponenty}
+
+\par \textit{Message} (nebo-li zpráva) je jednotka informace posílána mezi jednotlivımi komponentami zvanımi \textit{message endpoints}. \textit{Message} se skládá z~\textit{header} (èesky hlavièka) a~\textit{payload} (èesky náklad). \textit{Header} obsahuje data potøebná pro~bìh \textit{frameworku} jako je~ID èíslo nebo návratová hodnota. \textit{Payload} reprezentuje data, která mají bıt skrz \textit{message} pøenesena, tedy ji vıše zmínìné POJO nebo XML èi~jen textovı øetìzec.\cite{inaction}
+
+\par \textit{Message channel} je~spojení mezi nìkolika \textit{message endpoints}. Po~tomto spojení jsou posílány zprávy.\cite{inaction}
+Existují ètyøi monosti jak se \textit{message channel} mùe chovat:
+
+\clearpage
+
+\begin{itemize}
+	\item \textbf{Synchronnì}
+	\par \textit{Message} je~odeslána a odesílatel èeká na~odpovìï od~pøíjemce.
+	
+	\item \textbf{Asynchronnì}
+	\par \textit{Message} je~odeslána a~pøidána do~fronty pøíjemci. Odesílatel neèeká se na~odpovìï.
+	
+	\item \textbf{Point-to-point}
+	\par Spojení mezi dvìma endpointy. \textit{Message} je vdy doruèena, nebo nastala chyba.
+	
+	\item \textbf{Publish-subscribe}
+	\par \textit{Publisher} vysílá zprávy, které zachytává \textit{subscriber}. Poèet poslouchajících \textit{subscriber} mùe bıt mezi $ 0 $ a~$ n $. Odesílatel se nezajímá ani o~doruèení, ani o~pøípadné chyby.
+\end{itemize}
+
+\par \textit{Message endpoints} jsou komponenty, mezi nimi vzniká spojení -- \textit{message channel}. V~tìchto místech probíhá zpracování \textit{messages}.\cite{inaction} Existuje nìkolik typù \textit{message endpoints}:
+
+\begin{itemize}
+	\item \textbf{Transformer}
+	\par \textit{Transformer} je zodpovìdnı za~pøemìnu obsahu \textit{message} na~jinou a~vrácení upravené \textit{message}. Nejèastìji se jedná o~pøemìnu \textit{payload} (napø. z~formátu XML do \texttt{java.util.String}) ovšem lze editovat i~\textit{header}.\cite{siDoc}
+	
+	\item \textbf{Filter}
+	\par \textit{Filter} rozhoduje jestli má bıt \textit{message} poslána do \textit{message channel}. Obsahuje testovací metodu s~návratovım typem \textit{boolean}, která rozhoduje dle \textit{header} èi~\textit{payload}, jestli \textit{message} poslat, nebo ne.\cite{siDoc}
+	
+	\item \textbf{Splitter}
+	\par \textit{Splitter} pøijímá \textit{message} a~rozdìluje ji do~nìkolika dalších \textit{messages}, které pošle dál. Tyto \textit{messages} jsou poté zpracovávány najednou.\cite{inaction}
+	
+	\item \textbf{Aggregator}
+	\par \textit{Aggregator} mùeme jednoduše popsat jako opaènı \textit{Splitter}, tzn.~e èeká na~pøíchozí \textit{messages}. A pøijme všechny oèekávané, spojí je~do~jedné \textit{message}.\cite{inaction}
+	
+	\item \textbf{Service activator}
+	\par \textit{Service activator} je \textit{endpoint}, jen pøíchozí \textit{message} pošle nìjaké metodì. Tato metoda mùe message pøeèíst, zpracovat èi upravit a~poslat ji~dále.\cite{siDoc}
+	
+	\item \textbf{Channel adapter}
+	\par \textit{Channel adapter} je \textit{endpoint}, kterı spojuje \textit{message channel} s~jinım systémem (aplikací). \textit{Channel adapter} vìtšinou provádí nìjakou konverzi \textit{message} bìhem jejího odeslání/pøijímání. Spring Integration poskytuje nìkolik hotovıch \textit{channel adapters}, viz~\ref{adapters}.\cite{siDoc}
+\end{itemize}
+
+\subsection{Integrace pomocí REST}
+\par Nyní se podívejme na~pøíklad komunikace dvou aplikací pomocí Spring Integration. Z~kapitoly~\ref{adapters} víme, e existuje nìkolik zpùsobù, jimi mohou komunikovat. Jeliko všechny aplikace ve~firmì Simplity, pro~ní je nástroj vyvíjen, komunikují pøes rozhraní REST, tak i~v~tomto pøíkladì uvedu komunikaci pomocí REST, skrz \texttt{HttpInboundAdapter}.
+
+\par Pøíklad je pøevzatı z~\cite{siHttp} a~ukáe jak jednoduše poslat \textit{Multipart HTTP} poadavek pøes Spring \texttt{RestTemplate} a~pøijmout ho se~Spring Integration \texttt{HttpInboundAdapter}.
+
+Strana klienta je velmi jednoduchá: 
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+RestTemplate template = new RestTemplate();
+String uri = "http://localhost:8080/inboundAdapter.htm";
+Resource s2logo = 
+	new ClassPathResource("logo.png");
+MultiValueMap map = new LinkedMultiValueMap();
+map.add("company", "SpringSource");
+map.add("company-logo", s2logo);
+HttpHeaders headers = new HttpHeaders();
+headers.setContentType(new MediaType("multipart", "form-data"));
+HttpEntity request = new HttpEntity(map, headers);
+ResponseEntity<?> httpResponse = template.exchange(uri, HttpMethod.POST, request, null);
+\end{lstlisting}
+\end{algorithm}
+
+\par Vytvoøíme \texttt{MultiValueMap} a~vloíme do~ní data -- název firmy a~její logo. Zadáme URI na~kterou chceme poadavek poslat, a~\texttt{RestTemplate} se postará o~zbytek, tedy odešle HTTP poadavek obsahující \texttt{MultiValueMap}.
+
+\par Na~stranì serveru musíme vytvoøit XML konfiguraci, která nastaví pøíchozí \texttt{HttpInboundAdapter}, pøipojí k~nìmu \textit{message channel} a \textit{endpoint service activator}, kterı pouívá \texttt{MultipartReceiver}:
+
+\clearpage
+
+\begin{algorithm}
+\begin{lstlisting}[language=XML]
+<int-http:inbound-channel-adapter id="httpInboundAdapter"
+channel="receiveChannel"
+path="/inboundAdapter.htm"
+supported-methods="GET, POST"/>
+
+<int:channel id="receiveChannel"/>
+
+<int:service-activator input-channel="receiveChannel">
+	<bean class="MultipartReceiver"/>
+</int:service-activator>
+
+<bean id="multipartResolver" class="samples.CommonsMultipartResolver"/>
+\end{lstlisting}
+\end{algorithm}
+
+\par \texttt{HttpInboundAdapter} bude odchytávat poadavky a~konvertuje \textit{message} obsahující \texttt{LinkedMultiValueMap}. Následnì je zpracuje pomocí \textit{service activator} a~jeho metody \texttt{receive()}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+public void receive(LinkedMultiValueMap<String, Object> multipartRequest){
+	System.out.println("### Successfully received multipart request ###");
+	//Zde lze z multiparRequest získat poslaná data
+}
+\end{lstlisting}
+\end{algorithm}
+
+\section{Reaktivní programování}\label{reactiveSection}
+
+\par Reaktivní programování je programovací paradigma orientované okolo šíøení zmìn a~asynchronních datovıch tokù.\cite{rxJava8}
+
+\par Nech máme pøíkaz $ c=a+b $. Za~pouití imperativního paradigmatu, by~se~do~promìnné $ c $ uloila hodnota z~promìnnıch $ a $ a~$ b $. Následovali by po~tomto pøíkazu zmìny promìnnıch $ a $ nebo $ b $, tak by~$ c $ zùstalo poøád stejné. Ovšem za pouití reaktivního paradigmatu by se hodnota v~promìnné $ c $ aktualizovala vdy pøi zmìnì $ a $ nebo $ b $.\cite{rxJava8}
+
+\par Názornım pøíkladem mùe bıt aplikace Microsoft Excel. Máme-li buòky $ A1, B1 $ a~$ C1 = SUM(A1, B1) $, poté se buòka $ C1 $ aktualizuje vdy pøi zmìnì $ A1 $ nebo $ B1 $.\cite{rxJava8}
+
+\par V dnešní dobì se reaktivní programování pouívá pøedevším za~pouití datovıch tokù (angl.~\textit{stream}) a~funkcionálního programování.
+
+\subsection{Reaktivní programování a Java 8}
+
+\par V~dobì pøed vydáním Java verze~8 byl problém tvoøit asynchronní aplikace, nebo hlavním elementem, jak zaruèit asynchronnost, bylo zpìtné volání (nebo-li \textit{callback}). To však èasto vedlo k~termínu, jen se udává jako \textit{callback hell} (\textit{hell} je èesky peklo), tzn.~vnoøování nìkolika zpìtnıch volání do sebe, co vede k~neèitelnosti kódu.\cite{rxJava8}
+
+\par Java 8 však pøinesla API (\textit{Application Programming Interface} -- aplikaèní rozhraní) pro~funkcionální programování a~lambda funkce, které zpøehledòují a~zestruèòují zápis zpìtnıch volání. Dále pøedstavila novou komponentu \textit{Stream}. Ta~umí efektivnì vyuívat datové toky, pøistupovat k~datùm s~velmi malou odezvou èi bìet paralelnì, bez nutného nastavení vláken. \textit{Stream} má nevıhodu, e si neumí poradit s~operacemi, které mají vyšší odezvu (napø.~I/O operace). V~tuto chvíli nastupují reaktivní API, jako je Reactor nebo RxJava, obsahující reaktivní toky.\cite{reactiveTypes}
+
+\par Reaktivní toky jsou postaveny na~ètyøech Java rozhraních \textit{Publisher}, \textit{Subscriber}, \textit{Subscription} a~\textit{Processor}. Jedná se tedy o~vzor \textit{publisher-subscriber}, v~nìm \textit{publisher} poskytuje data svım \textit{subscribers}, které data zpracovávají. \textit{Subscription} je ivotní cyklus mezi jedním \textit{Subscriber} poslouchajícím jeden \textit{Publisher}. \textit{Processor} reprezentuje vztah mezi \textit{Subscriber} a~\textit{Publisher}.\cite{reactiveStreams} Reaktivní stránkou je~zde ta~skuteènost, e \textit{Publisher} oznamuje svım \textit{Subscriber} nové dostupné hodnoty.\cite{reactorDoc} 
+
+\par Dvì nejrozšíøenìjší reaktivní API pro~jazyk Java jsou tedy Reactor\cite{reactor} a~RxJava\cite{rxJava}. Jeliko se jedná o~knihovny postavené na~podobném principu, není mezi nimi vıraznı rozdíl a~vìtšinou vdy lze od~jedné knihovny pøejít k~druhé. V~mé práci se však dále budu zabıvat jen Reactor API, nebo Spring Framework (kterı je ve~firmì Simplity pouíván) bude obsahovat v~nové verzi~5 jeho plnou podporu a~je na~nìm postaven Spring Webflux -- reaktivní rozhraní pro~komunikaci webovıch aplikací pomocí HTTP.\cite{webflux}
+
+\subsection{Reactor}\label{reactorSection}
+\par Reactor je neblokující reaktivní API pro~JVM, kterı je plnì integrován s~Java~8 \textit{Stream} a~funkcionálním API.\cite{reactorDoc} Reactor poskytuje podobné operátory, jakım je Java~8 \textit{Stream}, ale tyto pracují s~jakımkoliv datovım tokem (nejen s~kolekcemi) a~dovolují definovat \textit{pipeline} (obdobné s~pipeline v~\ref{jenkinsSection}) transformaèních operací, které se aplikují na~data skrz tzv.~\textit{fluent} API a~lambda funkce. Zároveò podporují jak synchronní, tak asynchronní operace a~dovolují nám jednotlivé toky spojovat, rozdìlovat, filtrovat a~mnohem více.\cite{reactiveTypes}
+
+\par Reactor má dva základní reaktivní typy \textit{Flux} a \textit{Mono}, které implementují \textit{Publisher}.
+
+\par \textit{Flux} je standardní \textit{Publisher} reprezentující asynchronní sekvenci o~$ 0 $ a~$ N $ vysílanıch prvkù. Poskytuje tøi základní metody podle vysílaného signálu -- metoda \texttt{onNext()} zavolána vdy pro~kadı vysílanı prvek, metoda \texttt{onError()} zavolána pokud došlo bìhem zpracování k~chybì a~metoda \texttt{onComplete()} zavolána po~zpracování všech prvkù.
+
+\par \textit{Flux} obsahuje mnoho operací, s~nimi lze v~nìm obsaená data rùznì upravovat. Je jich opravdu mnoho a~jejich vıèet lze najít v~dokumentaci.\cite{reactorDoc} Nyní se podíváme na~jednoduchou ukázku, jak \textit{Flux} vytvoøit ze zadanıch øetìzcù a~jak tyto øetìzce transformovat (pomocí lambda vırazu), aby byly psány velkımi písmeny. Následnì budou øetìzce zpracovány pomocí \textit{Subscriber}, kterı kadı prvek vypíše na~standardní vıstup:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+Flux<String> flux = Flux.just("red", "green", "blue");
+
+Flux<String> upper = flux
+	.map(String::toUpperCase)
+	.doOnNext(System.out::println)
+	.subscribe();
+\end{lstlisting}
+\end{algorithm}
+
+\par \textit{Mono} je speciální \textit{Publisher} vysílající maximálnì jeden prvek. Proto poskytuje jen dvì základní metody, a~to \texttt{onError()} a~\texttt{onComplete()}, viz vıše. \textit{Mono} obsahuje jen podmnoinu operací, které má \textit{Flux}. Jinak se pouívá obdobnì jako \textit{Flux}.\cite{reactorDoc}
+
+\subsection{Komunikace pomocí Spring Webflux}\label{webfluxSection}
+
+\par Spring Webflux je modul, kterı bude obsaen ve~\textit{frameworku} Spring verze~5, podporující reaktivní programování pro~webové aplikace. Tento modul obsahuje podporu jak pro~reaktivní HTTP a WebSocket klienty, tak pro reaktivní servery webovıch aplikacích skrz REST èi~WebSocket.\cite{webflux}
+
+\par WebFlux by se v~cílovém nástroji pouil pro~integraci aplikace skrz rozhraní REST. Tedy jako v~pøípadì Spring Integration se podíváme na~pøíklad pøevzatı z~\cite{webflux}:
+\\
+\par Klient bude vypadat velmi jednoduše. Webflux obsahuje funkcionální, reaktivní komponentu \texttt{WebClient}, která je~reaktivní a~neblokující alternativou k~\texttt{RestTemplate} (pouita v~\ref{siSection}). WebFlux obaluje tìlo HTTP poadavku i~odpovìdi do jednoho z~reaktivních typù. Zároveò umí JSON, XML a~SSE serializaci a~lze tedy pracovat s~typovanımi objekty.\cite{webflux}
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+WebClient client = WebClient.create("http://example.com");
+
+Mono<Account> account = client.get()
+	.url("/accounts/{id}", 1L)
+	.accept(APPLICATION_JSON)
+	.exchange(request)
+	.then(response -> response.bodyToMono(Account.class));
+\end{lstlisting}
+\end{algorithm}
+
+\par Staèí vytvoøit \texttt{WebClient} s~URL na které je~spuštìn server. Poté na~nìm zavoláme metodu znaèící typ HTTP poadavku, tedy \textit{get()}. Následnì se nastaví v~jakém formátu budou data serializovaná a~pøenesena. Nakonec je~odpovìï pøetransformována pomocí metody \texttt{bodyToMono} do~\texttt{Mono} obsahující objekty typu \texttt{Account}.
+
+\par Server musí bıt spuštìn pomocí Spring Boot\cite{bootapp} verze~2.0, kterı podporuje Spring Webflux.
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+@RestController
+public class PersonController {
+
+	private final PersonRepository repository;
+	
+	public PersonController(PersonRepository repository) {
+		this.repository = repository;
+	}
+	
+	@PostMapping("/person")
+	Mono<Void> create(@RequestBody Publisher<Person> personStream) {
+		return this.repository.save(personStream).then();
+	}
+	
+	@GetMapping("/person")
+	Flux<Person> list() {
+		return this.repository.findAll();
+	}
+	
+	@GetMapping("/person/{id}")
+	Mono<Person> findById(@PathVariable String id) {
+		return this.repository.findOne(id);
+	}
+}
+\end{lstlisting}
+\end{algorithm}
+
+\clearpage
+
+\par \texttt{PersonRepository} berme jako implementaci nìjaké databáze, jen se~stará o~ukládání a~hledání osob.
+\par Anotace \texttt{@RestController} zjednodušenì øíká, aby \textit{singleton} instance této tøídy poslouchala HTTP poadavky a~podle typu zavolala pøíslušnou metodu.
+
+\par Poadavek typu \texttt{POST} na~adresu \url{http://example.com/person} zavolá metodu \texttt{create()}. Webflux se postará o~to, aby tìlo dotazu bylo pøevedeno do~typu \texttt{Publi\-sher<Person>}. \texttt{Publisher} mùe bıt jak \texttt{Mono} tak \texttt{Flux}. \texttt{Person\-Repository} ji pracuje s~tìmito reaktivními typy. Zároveò se klientovi pošle zpìt odpovìï, kterou je návratová hodnota metody \texttt{create()}.
+
+\par Poadavek typu \texttt{GET} na~adrese \url{http://example.com/person} vrátí v~odpovìdi seznam všech osob z~databáze. Klient tedy obdrí typ \texttt{Flux<Person>} se~kterım mùe následnì operovat.
+
+\par Poadavek typu \texttt{GET} na~adrese \url{http://example.com/person/{id}}, kde \texttt{\{id\}} je libovolnı textovı øetìzec, vrátí osobu s~danım ID z~databáze. Návratovı typ je \texttt{Mono<Person>}.
+
+\section{Porovnání knihoven}
+
+\par Hlavním cílem této kapitoly bylo seznámení s~Jenkins~CI a~jeho architekturou, se~Spring Integration, s~reaktivním programováním a~následné vyhodnocení jejich vyuití.
+
+\par Jenkins je aplikace zabıvající se~jinou oblastí nì je datová kvalita. Nicménì jeho architektura a~zpùsob zpracování úloh popsanı v~kapitole~\ref{jenkinsSection} je vyvíjenému nástroji podobnı. Jeliko je \textit{open source}, stálo za to~zjistit, jestli by Jenkins, nebo aspoò nìjaká jeho èást, nešly vyuít v~nástroji pro mìøení datové kvality. 
+
+\par Po~prohlédnutí zdrojového kódu\cite{jenkinsGit} a~domluvì s~vıvojáøi z~firmy Simplity jsme usoudili, e by nebylo dobré Jenkins vyuít. Protoe je vyvíjen od~roku 2005, kdy se ještì jmenoval Hudson, není jeho architektura nejnovìjší. Zároveò je to~projekt velmi rozsáhlı a~vyjmout z~nìj jen tu~malou a~potøebnou èást, by bylo velmi obtíné a~pravdìpodobnì neefektivní øešení.
+
+\par Následnì jsem potøeboval doporuèit jednu z~knihoven pro~integraci vyvíjeného nástroje s~jinımi aplikacemi. K~tomu lze vyuít jak Spring Integration tak reaktivní programování ve~formì Spring Webflux.
+
+\par Spring Integration je ji starší framework\cite{inaction} avšak je stále vylepšován a~vychází jeho nové verze, zatímco Spring Webflux ještì zcela oficiálnì nevyšel a~bude a souèástí Spring Framework 5.0, kterı je plánován na~letošní rok 2017. Lze ho ale ji vyzkoušet -- stáhnout poslední verzi od~vıvojáøù.
+
+\par Po~prostudování a~vyzkoušení obou tìchto knihoven se~pøikláním k~vyuití Spring Webflux a~to~z~dùvodù, e integrace by mìla probíhat pomocí REST rozhraní, které zvládají obì knihovny. Ve~Spring Webflux však vidím budoucnost díky trendu reaktivního programování a~jeho jednoduchého pouití. Zároveò se stará o~serializaci a~deserializaci pøenášenıch objektù, staèí mít jen vhodnı doménovı model. Velkou vıhodou je automatickı pøeklad obsahu poadavkù i~odpovìdí do reaktivních typù \textit{Flux} èi~\textit{Mono}.
+
+\par Spring Integration bych doporuèil, pokud by integrace mìla probíhat skrz jiné rozhraní ne je REST nebo WebSocket. Jeho nastavení je o~nìco sloitìjší, kvùli nutnosti psaní XML konfigurace.
+
+\chapter{Zpracování a spouštìní úloh}\label{graphSection}
+
+Následující kapitola se~zabıvá grafovımi algoritmy, které jsou potøeba ke~zpracování a~spouštìní úloh. Nejprve se podíváme na~to, jak jednotlivé úlohy reprezentovat. Poté si popíšeme rùzné druhy spouštìní úloh, a ji paralelnì nebo sekvenènì.
+
+\section{Zpracování grafu}
+Jak jsem ji zmínil v~kapitole~\ref{popis}, jednotlivé úlohy mohou tvoøit orientovanı acyklickı graf, kde úlohy jsou uzly grafu a~závislosti mezi nimi tvoøí hrany grafu. Existuje-li hrana vedoucí z~uzlu~$ u $ do~uzlu~$ v $, pak úloha~$ u $ potøebuje ke~svému vıpoètu vısledek z~úlohy~$ v $ viz~obrázek~\ref{fig1}. Pro budoucí úèely však bude lepší mít graf opaènì orientovanı, definovanı dle~\cite{kolar}:
+\\
+
+\textbf{Definice:} \textit{\clqq Orientovanı graf $G_{2}=\langle H,U,\sigma_{2} \rangle$ nazıváme \textbf{opaènì orientovanım} vzhledem k~orientovanému grafu $G_{1}=\langle H,U,\sigma_{1} \rangle$ (zapisujeme $ G_{2}=G_{1}^{-} $), pokud pro~incidence $\sigma_{1}$ a $\sigma_{2}$ platí vztah
+\begin{eqnarray}
+\sigma_{1}(h)=(u,v)\,\Leftrightarrow\,\sigma_{2}(h)=(v,u) &\textit{pro kadou hranu } h \in H.\textit{\crqq} 
+\end{eqnarray}
+}
+
+Opaènì orientovanı graf úlohy AGR1 vidíme na~obrázku~\ref{fig2}. Existuje-li v~nìm hrana vedoucí z~uzlu~$ u $ do~uzlu~$ v $, pak úloha~$ u $ musí bıt vypoètena døíve ne úloha~$ v $.
+
+Další problém, jen by mìl nástroj øešit, je správná reprezentace grafu úloh. Nástroj pøijímá úlohy, které vdy rekurzivnì obsahují pole úloh potøebnıch k~vıpoètu. Tato reprezentace se však nehodí pro~paralelní spouštìní úloh. Podle~\cite{kolar} existují dva druhy reprezentace: maticová a~spojová. 
+
+Dále se budu zabıvat jen spojovou reprezentací, nebo je standardním zpùsobem vyjádøení graf. Oproti maticové formì má navíc lepší asymptotickou pamìovou sloitost a~pro~vìtšinu øešenıch úloh umoòuje dosáhnout lepší èasové sloitosti.\cite{kolar}
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.65]{graph1inverted.eps}
+	\end{center}
+	\caption{Opaènì orientovanı graf úlohy AGR1 z~obrázku~\ref{fig1}}
+	\label{fig2}
+\end{figure}
+
+\textbf{Spojová reprezentace} orientovaného grafu $G=\langle H,U,\sigma \rangle$ je tvoøena polem \textit{Adj} obsahujícím~$ |U| $ ukazatelù na~seznamy sousedù jednotlivıch uzlù z~mnoiny $ U $. Pro~kadı uzel $ u \in U $ obsahuje seznam $ Adj[u] $ jeden záznam pro~kadou orientovanou hranu $ h=(u,v) \in H $ s~koncovım uzlem ve~$ v $.\cite{kolar}
+
+\section{Spouštìní úloh}\label{executionSection}
+
+Nyní se podíváme, jakımi zpùsoby mùe náš nástroj úlohy spouštìt, a ji sekvenènì, èi paralelnì. Dùleité je, aby se pøi~spouštìní úloh dodrelo správné poøadí. Tedy aby kadá úloha mìla pøed svım vıpoètem spoèítány úlohy, na~kterıch její vıpoèet závisí.
+
+Na zaèátku si nejprve definujeme termíny podle~\cite{kolar} pouívané v~následujících podkapitolách.
+\\
+
+\textbf{Definice:} Existuje-li v~grafu hrana z~uzlu~$ u $ do~uzlu~$ v $, poté uzel~$ u $ nazıváme \textbf{pøedchùdcem} uzlu~$ v $ nebo obdobnì uzel~$ v $ \textbf{následníkem} uzlu~$ u $.
+\\
+
+\textbf{Definice:} \uv{\textit{Pro libovolnı uzel~$ u $ orientovaného grafu~$ G $ nazıváme \textbf{vıstupním stupnìm uzlu}~$ u $ (znaèíme $ \delta_{G}^{+}(u) $) poèet hran, které mají uzel~$ u $ za svùj poèáteèní uzel, \textbf{vstupním stupnìm uzlu}~$ u $ (znaèíme $ \delta_{G}^{-}(u) $) poèet hran, které mají uzel~$ u $ za svùj koncovı uzel.}
+
+\textit{Stupnì uzlù souvisejí s~mnoinami jeho následovníkù $ \Gamma(u) $ a~pøedchùdcù $ \Gamma^{-1}(u) $. V~prostém orientovaném grafu platí:}
+\begin{eqnarray}
+\delta^{+}(u) = |\Gamma(u)|, &  \delta^{-}(u) = |\Gamma^{-1}(u)|
+\end{eqnarray}
+
+\textit{Nemá-li uzel~$ u $ v~orientovaném grafu~$ G $ ádné pøedchùdce (tzn. $ \delta^{-}(u) = 0 $), øíkáme, e uzel~$ u $ je \textbf{koøen} grafu~$ G $.}}
+
+\subsection{Sekvenèní}
+
+Pro sekvenèní spouštìní úloh nám staèí vyuít topologického uspoøádání uzlù.
+\textbf{Topologické uspoøádání} je úplné uspoøádání uzlù, v~nìm je pro~kadou hranu~$ (u,v) $ uzel~$ u $ pøed uzlem~$ v $. Takové uspoøádání existuje jen pro acyklické grafy. Topologické uspoøádání grafu není vdy jednoznaènì urèeno.\cite{kolar} Pøíklady topologickıch uspoøádání na~grafu úlohy AGR1 z~obrázku~\ref{fig2} vidíte na obrázku \ref{fig3}.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.55]{topsort1.eps}
+		\includegraphics[angle=0,scale=0.55]{topsort2.eps}
+	\end{center}
+	\caption{Dvì rùzná topologická uspoøádání úlohy AGR1}
+	\label{fig3}
+\end{figure}
+
+První jednoduchı algoritmus na~zjištìní topologického uspoøádání grafu funguje za~pouití algoritmu prohledávání do~hloubky~(angl. \textit{depth-first search}, zkrácenì DFS). 
+
+DFS je zaloeno na~rozdìlování uzlu do~tøí skupin: nové, otevøené a~uzavøené. Otevøenım uzlem je po~svém prvním objevení, uzavøenım se stává po~kompletním prozkoumání všech jeho následníkù. Ke~kadému uzlu~$ u $ se pøidìlují dvì znaèky uchovávané v~poli $ d[u] $ a~$ f[u] $, kde~$ d[u] $ odpovídá okamiku objevení uzlu a~$ f[u] $ jeho uzavøení. 
+
+Pøikládám pseudokód algoritmu DFS (algoritmus~\ref{dfs} a~\ref{dfs1}) pro~orientovanı graf $G=\langle H,U \rangle$ za~pøedpokladu spojové reprezentace grafu prostøednictvím seznamù násled\-níkù.\cite{kolar}
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Prohledávání do hloubky}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{dfs}
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{DFS}}{$ G $}
+		\For{kadı uzel $ u \in U $}
+		\State $stav[u] := $ FRESH
+		\State $p[u] := $ NULL
+		\EndFor
+		\State $i := 0$
+		\For{kadı uzel $ u \in U $}
+		\If{$stav[u] =$ FRESH}
+		\State DFS-Projdi($ u $)
+		\EndIf
+		\EndFor
+		\EndProcedure
+		\algstore{dfs1}
+	\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Prohledávání do hloubky (pokraèování)}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{dfs1}
+	\begin{algorithmic}[1]
+		\algrestore{dfs1}
+		\Procedure{\textbf{DFS-Projdi}}{$ u $}
+		\State $stav[u] := $ OPEN
+		\State $i := i + 1$
+		\State $d[u] := i$
+		\For{kadı uzel $ v \in Adj[u] $}
+		\If{$stav[v] =$ FRESH}
+		\State $ p[v] := u $
+		\State DFS-Projdi($ v $)
+		\EndIf
+		\EndFor
+		\State $ stav[u] := CLOSED $
+		\State $i := i + 1$
+		\State $f[u] := i$
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+Poté se topologické uspoøádání najde pomocí algoritmu~\ref{topsort1}, kterı má asymptotickou èasovou sloitost $ O(|U| + |H|) $.\cite{kolar}
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Topologické uspoøádání uzlù grafu pomocí DFS}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{topsort1}
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{TOP-SORT1}}{$ G $}
+		\State vytvoø prázdnı seznam uzlù~$ S $
+		\State pomocí DFS($ G $) poèítej okamiky uzavøení $ f[v] $ všech uzlù grafu~$ G $
+		\State v~okamiku uzavírání ulo kadı uzel $ v $ na zaèátek seznamu uzlù $ S $
+		\State seznam $ S $ obsahuje uzly seøazené podle definice topologického uspoøádání
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+Druhı algoritmus na~nalezení topologického uspoøádání (algoritmus~\ref{topsort2}) je~postaven na~postupném odebírání koøenù z~grafu. V~algoritmu se pouívá pomocné pole~$ \delta $, které obsahuje vstupní stupeò uzlù v~podgrafech získávanıch postupnım vypouštìním koøenù. Koøeny se ukládají do~mnoiny $ M $ a~do~zásobníku. Uzly z~mnoiny~$ M $ se dále pouívají k~upravì jejich následníkù. Na~zásobníku po~dokonèení algoritmu najdeme uzly v~topologickém uspoøádání. Algoritmus má stejnou asymptotickou èasovou sloitost jako algoritmus zaloenı na DFS, tedy $ O(|U| + |H|) $.\cite{kolar}
+
+\clearpage
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Topologické uspoøádání uzlù grafu pomocí vypouštìní koøenù}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{topsort2}
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{TOP-SORT2}}{$ G $}
+		\For{kadı uzel $ u \in U $}
+		\State $\delta[u] := 0$
+		\EndFor
+		\For{kadı uzel $ u \in U $}
+		\For{kadı uzel $ v \in Adj[u] $}
+		\State $\delta[v] := \delta[v] + 1$
+		\EndFor
+		\EndFor
+		\State $M := \emptyset$; INIT\_STACK
+		\For{kadı uzel $ u \in U $}
+		\If{$\delta[u] = 0$}
+		\State $M := M \cup \{u\}$
+		\State PUSH($ u $)
+		\EndIf
+		\EndFor
+		\While{$M \neq \emptyset$}
+		\State $w := $ libovolnı uzel z~$ M $
+		\State $M := M - \{v\}$
+		\For{kadı uzel $ w \in Adj[v] $}
+		\State $\delta[w] := \delta[w] - 1$
+		\If{$\delta[w] = 0$}
+		\State $M := M \cup \{w\}$
+		\State PUSH($ w $)
+		\EndIf
+		\EndFor
+		\EndWhile
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+ 
+Po získání topologického uspoøádání staèí jen úlohy jednotlivì za~sebou spouštìt.
+
+\subsection{Paralelní}\label{parallelSection}
+
+Pro~paralelní spouštìní úloh mohou bıt pouity následující tøi algoritmy:
+
+\begin{itemize}
+	\item paralelní spouštìní po~vrstvách;
+	\item paralelní procházení grafu;
+	\item paralelní spouštìní topologického uspoøádání.
+\end{itemize}
+
+\textbf{Paralelní spouštìní po vrstvách} je zaloeno na~spouštìní nezávislıch mnoin úloh, kde kadá mnoina neobsahuje závislosti mezi jednotlivımi uzly. Nech máme graf $G=\langle H,U \rangle$, poté lze uzly grafu rozdìlit do~mnoin~$ S_{i} $ pomocí vztahu:
+\begin{align}
+\begin{split}
+S_{0} &= \textnormal{Koøeny grafu } G ,
+\\
+S_{i+1} &= \{v \in U\,|\,\forall u \in U, (u,v) \in H \Rightarrow u \in \bigcup_{k = 0}^{i} S_{k}\}  .
+\end{split}
+\end{align}
+
+Na~obrázku~\ref{fig4} vidíte rozdìlení grafu úlohy~AGR1 do~nezávislıch mnoin~$ S_{i} $.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.65]{layersAGR1.eps}
+	\end{center}
+	\caption{Graf úlohy AGR1~\ref{fig2} s~nezávislımi mnoinami $ S_{i} $}
+	\label{fig4}
+\end{figure}
+
+Spuštìní následnì probìhne podle algoritmu \ref{layer}:
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Paralelní spoutìní úloh po vrstvách}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{layer}
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{EXECUTE-1}}{$ k, S[] $}
+		\State $ i := 0 $
+		\For{$ i < k $}
+		\For{kadı uzel $ u \in S[k] $ } \textbf{in parallel}
+		\State vıpoèet~$ u $
+		\EndFor
+		\EndFor
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+Spouštìní po~vrstvách však není optimální, jeliko nemusí vyuívat plnı potenciál paralelního vıpoètu, tedy zapojení všech jader procesoru. Viz~obrázek~\ref{fig5}, jestlie úloha~SQL1 bude poèítána mnohem déle ne~úloha~SQL2, poté bude zbyteènì blokován vıpoèet úloh pSQL1, pSQL2, pSQL3 a~pSQL4.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=0,scale=0.65]{layersBad.eps}
+	\end{center}
+	\caption{Neoptimální graf úlohy pro~paralelní spouštìní po~vrstvách}
+	\label{fig5}
+\end{figure}
+
+Dalším zpùsobem jak~úlohy paralelnì spouštìt je \textbf{paralelní procházení grafu}. Pro~kadı koøen~$ u $ grafu $G=\langle H,U \rangle$ se spustí vlákno s~jeho vıpoètem. Jakmile jeho vıpoèet skonèí, pro~kadého následovníka uzlu~$ u $ se vytvoøí nová vlákna s~jejich vıpoètem. Synchronizace bude provedena ve~vıpoètu úlohy -- pokud byl vıpoèet zavolán ménìkrát, ne~je jeho vstupní stupeò~$ \delta(u) $, tak~se~vıpoèet pøeruší, v~opaèném pøípadì pokraèuje, viz~algoritmus~\ref{traversal}:
+
+\begin{algorithm}
+	\floatname{algorithm}{Algoritmus}
+	\caption{Paralelní procházení grafu}
+	\algrenewcommand\algorithmicprocedure{\textbf{}}
+	\label{traversal}
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{EXECUTE-2}}{$ G $}
+		\For{kadı uzel $ u \in U $}
+		\State $ u.count := 0 $
+		\EndFor
+		\For{kadı koøen $ u \in U $}
+		\State EXECUTE-PARALLEL($ u $)
+		\EndFor
+		\EndProcedure
+	\end{algorithmic}
+	
+	\begin{algorithmic}[1]
+		\Procedure{\textbf{EXECUTE-PARALLEL}}{$ u $}
+		\State \textbf{atomic} \{ \Comment{Zaèátek atomické operace}
+		\State \hspace{\algorithmicindent} $ u.count := u.count + 1 $
+		\State \hspace{\algorithmicindent} \textbf{if} {$ u.count < \delta(u) $} \textbf{then}
+		\State \hspace{\algorithmicindent} \hspace{\algorithmicindent} \textbf{end}
+		\State \hspace{\algorithmicindent} \textbf{end if}
+		\State \} \Comment{Konec atomické operace}
+		\State vıpoèet $ u $
+		\For{kadı uzel $ v \in Adj[u] $ } \textbf{in parallel}
+		\State EXECUTE-PARALLEL($ v $)
+		\EndFor
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+Problémem u~paralelního procházení grafu mùe bıt vysoká reie pøi~vytváøení mnoha novıch vláken.
+
+Poslední moností, jak~spouštìt úlohy paralelnì, a~kterou implementuji v~nástroji, bude \textbf{paralelní spuštìní topologického uspoøádání} za~pomoci Java tøídy \texttt{java.util.concurrent.CountDownLatch}. Tato tøída se pouívá k~synchronizaci nìkolika vláken. Pøi~vytváøení instance tøídy \texttt{CountDownLatch} se nastaví hodnota~$ N $. Po~zavolání metody \texttt{await()} je aktuální vlákno blokováno, dokud není hodnota~$ N $ sníena voláním metody \texttt{countDown()} a na~nulu.
+
+K~pouití tohoto algoritmu, bude kadá úloha obsahovat svùj \texttt{CountDown\-Latch} s hodnotou $ N $ nastavenou na poètu vstupního stupnì uzlu $ \delta(u) $ a~pole obsahující \texttt{CountDownLatch} všech následníku. Vıpoèet úloh bude blokován funkcí \texttt{await()}. Po~uvolnìní vlákna a~dopoèítání úlohy se na~poli následníkù zavolá \texttt{countDown()}. Úlohy se budou zpracovávat paralelnì, ale jednotlivá vlákna musí bıt vytvoøena v~poøadí topologického uspoøádání, aby nenastal \textit{deadlock}.
+
+\begin{algorithm}
+ 	\floatname{algorithm}{Algoritmus}
+ 	\caption{Paralelní spouštìní topologického uspoøádání}
+ 	\algrenewcommand\algorithmicprocedure{\textbf{}}
+ 	\label{latch}
+ 	\begin{algorithmic}[1]
+ 		\Procedure{\textbf{EXECUTE-3}}{$ G $}
+ 		\State $ topsort := $ TOPSORT($ G $) 
+ 		\For{kadı uzel $ u \in topsort $} \textbf{in parallel}
+ 		\State DO-EXECUTE($ u $)
+ 		\EndFor
+ 		\EndProcedure
+ 	\end{algorithmic}
+ 	
+ 	\begin{algorithmic}[1]
+ 		\Procedure{\textbf{DO-EXECUTE}}{$ u $}
+ 		\State $ u.countDownLatch$.await() 
+ 		\State vıpoèet $ u $
+ 		\For{kadı uzel $ v \in Adj[u] $}
+ 		\State $ v.countDownLatch $.countDown()
+ 		\EndFor
+ 		\EndProcedure
+ 	\end{algorithmic}
+\end{algorithm}
+
+\chapter{Realizace}\label{realizationSection}
+
+V~úvodu této kapitoly je~pøedstavena zvolená technologie. Dále je~zde uvedena struktura projektu a~popis jednotlivıch komponent. Více prostoru je~vìnováno pro~základní rozhraní úloh a~poté pro~implementace jednotlivıch druhù spouštìní z pøedchozí kapitoly~\ref{executionSection}. Následnì je~pøedstaven nástroj jako serverová aplikace. Závìr této kapitoly se~vìnuje vıkonnostním testùm spouštìní úloh a~jejich vısledkùm.
+
+\section{Pouitá technologie}
+
+Pro~realizaci bylo potøeba pouití programovacího jazyku Java, jeliko je~standardem pro~tvorbu podnikovıch aplikací a~firma Simplity ho~pouívá ve~všech svıch aplikacích.
+
+Spring Framework byl pouit díky své implementaci \textit{Inversion~of~Control} (té \textit{dependency injection}), co je proces, v~nìm si jednotlivé objekty urèí závislosti na jinıch objektech. Tyto závislosti pak zaruèí dosazení správného objektu pøi jeho vytvoøení.\cite{siDoc} Spring Boot nám umonil vytvoøit z~nástroje samostatnou serverovou aplikaci, která je spuštìna na~vnoøeném serveru -- jakım mùe bıt napø.~Tomcat -- bez nutnosti nasazení \textit{Web Application Archive} (WAR) souboru. Spring Integration a~Spring Reactive byly zase pouity k~analıze v~kapitole~\ref{analyzaSection}.
+
+K~testování jednotlivıch èástí kódu (tzv.~\textit{unit testing}) byla pouita knihov\-na jUnit. K vyzkoušení nástroje nad skuteènımi daty byla nainstalována databáze Oracle Database 11g Release 2. Nìkteré testy aplikace vyuívají ukázkové databáze získané ihned po~instalaci.
+
+K~sestavení aplikace a~k~provázání jednotlivıch knihoven byl vyuit Apa\-che Maven. Maven je tzv.~\textit{build tool}, tedy nástroj pro~usnadnìní kompilování a~sestavení velkıch aplikací. Základem je soubor~\texttt{pom.xml}, ve~kterém se definují základní údaje o~projektu, jako jsou jméno nebo verze. Dále se v~tomto souboru urèí závislosti na~ostatních knihovnách, které Maven tyto knihovny poté stáhne ze~svého repositáøe a~importuje do~projektu.
+
+Projekt jsem vyvíjel v~programu IntelliJ IDEA od~firmy JetBrains, jeliko to~je~vıborné vıvojové prostøedí pro~vyvíjení projektù v~Javì a~obsahuje podporu databází, Spring Framework èi~verzování pomocí systému správy verzí GIT, kterı byl pouít k~zálohování projektu.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=90,scale=0.5]{engine.pdf}
+	\end{center}
+	\caption{Hierarchická struktura projektu}
+	\label{fig6}
+\end{figure}
+
+\clearpage
+
+\section{Struktura projektu}
+
+Vzhledem k~velikosti projektu, která v~budoucnu ještì poroste, je za~úèelem zvıšení pøehlednosti vhodné rozdìlit jednotlivé tøídy do~nìkolika balíèkù (tzv.~\textit{packages}). Vısledná struktura je zobrazena na~diagramu~\ref{fig6}. 
+
+Projekt je na~nejvyšší úrovni tvoøen balíèkem~\texttt{engine}, kterı slouí jako jmennı prostor pro~tøídy zajišující chod serverové aplikace a~pro~tìchto dalších pìt vnoøenıch balíèkù:
+
+\begin{itemize}
+	\item \texttt{api} -- \textit{základní rozhraní úloh.} Obsahuje základní rozhraní a~abstraktní tøídy pro~práci s~úlohami a~jejich vısledky.
+	\item \texttt{graph} -- \textit{reprezentace grafù.} Implementace grafu úloh v~závislosti na~typu spouštìní.
+	\item \texttt{strategies} -- \textit{spouštìní úloh.} Jednotlivé strategie jsou odpovìdny za~sestavení grafu úloh a~jeho následné spuštìní.
+	\item \texttt{quality} -- \textit{implementace úloh.} Implementace základních typù úloh a~vısledkù.
+	\item \texttt{test} -- \textit{testovací implementace úloh.} Implementace testovacích úloh a~generování grafù pro~potøeby vıkonnostních testù, bez nutnosti pøipojení k~databázi.
+\end{itemize}
+
+\subsection{Základní rozhraní úloh}
+
+Základní rozhraní pro~práci s~úlohami a~jejich vısledky je~uloeno v~balíèku~\texttt{api}. Jedná se o~rozhraní (angl.~\textit{interfaces}) a~abstraktní tøídy vyuívající šablony (generické tøídy a~funkce). Na~obrázku~\ref{fig7} lze vidìt diagram zachycující vzájemné vztahy mezi tøídami balíèku~\texttt{api}.
+\clearpage
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[angle=90,scale=0.55]{api.pdf}
+	\end{center}
+	\caption{Diagram tøíd reprezentujících základní rozhraní úloh}
+	\label{fig7}
+\end{figure}
+\clearpage
+
+\subsubsection{Job}
+\texttt{Job} je~základní generické rozhraní pro~úlohu. Kadá úloha musí implementovat toto rozhraní. Generickım typem je~jakákoliv tøída, která implementuje tøídu~\texttt{Result}. Rozhraní definuje tyto metody:
+
+\begin{itemize}
+	\item \texttt{getUuid()} -- Vrací hodnotu typu~\texttt{java.util.UUID}, která bude úlohu jednoznaènì identifikovat.
+	\item \texttt{getResult()} -- Vrací vısledek úlohy, kterı je generickım typem.
+	\item \texttt{getChildren()} -- Vrací list úloh, tedy tøíd implementujících~\texttt{Job}, které jsou potøeba k~vıpoètu této úlohy.
+	\item \texttt{execute()} -- Spouští vıpoèet úlohy.
+	\item \texttt{addJobListener(JobListener listener)} -- Pøidává k~úloze objekt typu \texttt{JobListener}.
+	\item \texttt{removeJobListener(JobListener listener)} -- Odebírá z~úlohy objekt typu~\texttt{JobListener}.
+\end{itemize}
+
+\subsubsection{JDBCJob}
+\texttt{JDBCJob} je generické rozhraní rozšiøující \texttt{Job} o~metodu~\texttt{get\-Connection()}.
+Tato metoda vrací instanci tøídy \texttt{java.sql.Connection}, která reprezentuje spojení s~databází a~na ní je moné spouštìt SQL dotazy do~databáze.
+
+\subsubsection{JobListener}
+\texttt{JobListener} je~rozhraní, které reaguje na~zpracování úloh. Definuje tøi metody, z nich je~kadá spuštìna po~jiné dokonèené èásti úlohy: 
+
+\begin{itemize}
+	\item \texttt{jobStarted(Job<?> job)} -- Metoda volána vdy, kdy je~zahájen vıpoèet úlohy. Parametrem je~spuštìná úloha.
+	\item \texttt{jobFinished(Job<?> job)} -- Metoda volána vdy, kdy je~dokonèen vıpoèet úlohy. Parametrem je~opìt dokonèená úloha.
+	\item \texttt{jobFailed(Job<?> job, Throwable t)} -- Metoda volána vdy, kdy dojde bìhem vıpoètu úlohy k~chybì. Parametrem je~úloha, ve~které došlo k~chybì, a~vyhozená vıjimka.
+\end{itemize}
+
+\subsubsection{Result}
+\texttt{Result} je~základní rozhraní pøedstavující vısledek úlohy. Toto rozhraní definuje jen jednu metodu, a~to~\texttt{getJob()}, která vrací úlohu, pro~ni je~vısledkem.
+
+\subsubsection{ExecutionStrategy}
+\texttt{ExecutionStrategy} je~rozhraní pro~strategie, jimi se~budou spouštìt úlohy. Rozhraní definuje metodu \texttt{execute(Job job)}, která spustí zadanou úlohu.
+
+\subsubsection{AbstractResult}
+\texttt{AbstractResult} je~abstraktní tøída implementující \texttt{Result}. Tato tøída obsahuje jeden atribut tøídy \texttt{Job}, kterı je~nastaven parametrem konstruktoru a~je~vracen v~metodì~\texttt{getJob()}.
+
+\subsubsection{AbstractJob}
+\texttt{AbstractJob} je abstraktní tøída implementující \texttt{Job}. Tato tøída obsahuje tøi privátní atributy:
+\begin{itemize}
+	\item \texttt{uuid} -- Instance tøídy \texttt{java.util.UUID}, která jednoznaènì identifikuje úlohu.
+	\item \texttt{result} -- Vısledek úlohy.
+	\item \texttt{listeners} -- Pole obsahující instance \texttt{JobListener}.
+\end{itemize}
+
+Tyto atributy jsou pouity v~metodách z~rozhraní \texttt{Job}. \texttt{AbstractJob} neobsahuje ádné úlohy potøebné k~vıpoètu, proto metoda \texttt{getChildren()} vrací vdy prázdné pole úloh. 
+
+Dále tøída obsahuje tøi \textit{protected} metody \texttt{fireStarted()}, \texttt{fireFinished()} a~\texttt{fireFailed(Throwable t)}, jejich cílem je~zavolání metod \texttt{jobStarted()}, \texttt{jobFinished()} a~\texttt{jobFailed()} na~všech objektech v~poli \texttt{listeners}.
+
+Tyto tøi metody jsou volány z~funkce \texttt{execute()}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+public void execute() {
+	fireStarted();
+	try {
+		result = doExecute();
+		fireFinished();
+	} catch (Throwable t) {
+		fireFailed(t);
+	}
+}
+\end{lstlisting}
+\end{algorithm}
+
+Abstraktní metoda \texttt{doExecute()} bude slouit k~pøesné implementaci vıpoètu úlohy, tedy napø.~dotazu do~databáze a~následné zpracování vısledku. Vztah mezi \texttt{execute()} a~\texttt{doExecute()} odpovídá návrhovému vzoru \textit{Template}.
+
+Metody \texttt{equals(Object o)} a~\texttt{hashCode} vyuívají jen hodnoty z~atributu \texttt{uuid}.
+
+\subsubsection{AbstractJobContainer}
+\texttt{AbstractJobContainer} je potomkem tøídy \texttt{AbstractJob}. Jak z~názvu napovídá, tato abstraktní tøída je~vzorem pro úlohy, které potøebují pro~svùj vıpoèet úlohy jiné. Tøída má privátní atribut \texttt{children}, jen je~list typu \texttt{java.util.ArrayList} a~obsahuje instance \texttt{Job}.
+
+\texttt{AbstractJobContainer} ji potøebuje dva generické typy. Kromì generického typu svého vısledku~\texttt{R} pouívá i~generickı typ vısledku svıch \uv{dìtí}~\texttt{R2}.
+
+Pøibyly zde dvì veøejné metody \texttt{addChild(Job<R2> child)} a~\texttt{addChild\-ren(Collection<? extends Job<R2>\,> children)}, jen pøidávají úlohu nebo kolekci úloh do~atributu \texttt{children}. 
+
+\subsection{Reprezentace grafù}
+
+V~balíèku \texttt{graph} jsou uloeny rùzné implementace grafù a~uzlù grafu v~závislosti na~zpùsobu spouštìní. Uzly grafu obalují úlohy a~pøidávají k~nim další informace potøebné k~jejich vıpoètu. Jednotlivé implementace si jsou velmi podobné, ovšem pouití dìdiènosti je zde zbyteèné.
+
+\subsubsection{Node}
+
+\texttt{Node} je abstraktní implementací uzlu grafu. Obsahuje tøi \textit{protected} atributy:
+
+\begin{itemize}
+	\item \texttt{uuid} -- \texttt{java.util.UUID} obalované úlohy.
+	\item \texttt{job} -- Je obalovaná úloha, tedy objekt typu \texttt{Job}.
+	\item \texttt{inDegree} -- Èíslo typu \texttt{int}, jen udává vstupní stupeò uzlu.
+\end{itemize}
+
+\texttt{Node} dále obsahuje tzv.~\textit{gettery}, co jsou veøejné funkce, které jen vrací pøíslušné atributy, a~\textit{setter} pro~\texttt{inDegree}, kterı ho umoòuje nastavovat. Upraveny jsou také metody \texttt{equals()} a~\texttt{hashCode()}, které pracují na~základì \texttt{uuid}.
+
+\subsubsection{BasicNode a BasicGraph}
+
+\texttt{BasicNode} je potomkem \texttt{Node}, kterı implementuje rozhraní \texttt{Callable}. Toto rozhraní je podobné rozhraní \texttt{Runnable}, tedy øíká o~objektu, e mùe bıt spuštìn v~jiném vláknì. V~tomto vláknì se~spustí metoda \texttt{call()}. Oproti \texttt{Runnable} vrací \texttt{Callable} vısledek a~mùe vyhodit vıjimku.\cite{javaDoc}
+
+\texttt{BasicNode} navíc obsahuje privátní atribut \texttt{depth} a~jeho \textit{getter} a~\textit{setter}. \texttt{Depth} je~èíslo typu \texttt{int}, které znaèí do~jaké nezávislé mnoiny z~kapitoly \ref{parallelSection} spadá. Dále jsou v~této tøídì metody \texttt{execute()} a~\texttt{call()}, jen jsou témìø totoné, jen \texttt{execute()} se pouívá pøi~sekvenèním spouštìní, zatímco \texttt{call()} pøi~paralelním. Staèilo by mít jen jednu metodu \texttt{call()}, ovšem kvùli pøehlednosti jsem ponechal obì dvì.
+
+\texttt{BasicGraph} je graf tvoøen \texttt{BasicNode} uzly. Spojová reprezentace grafu je~uloena v~privátním atributu \texttt{map}, jen je typu \texttt{HashMap<BasicNode, List\-<BasicNode>\,>}. Je to tedy mapa, kde klíèe jsou jednotlivé uzly a~hodnotou je vdy list následníkù daného uzlu. Tato mapa se sestaví pomocí rekurzivní metody \texttt{buildReversedGraph(Job<?> currentJob)}, jen je volána v~konstruktoru.
+
+\texttt{BasicGraph} dále obsahuje metodu pro~získání topologického uspoøádání grafu \texttt{topSort()} podle algoritmu~\ref{topsort2}. Na~získání topologického uspoøádání tedy pouívám algoritmus, kterı je~zaloen na~postupném odebírání koøenù. Vıhodou oproti algoritmu zaloeném na~DFS je i~jeho vyuití v~následující metodì pro~získání nezávislıch mnoin. Metoda \texttt{getLayers()} vrací nezávislé mnoiny uzlù, ve~kterıch mohou bıt úlohy spuštìny paralelnì, viz~\ref{parallelSection}. Vyuívá se k~tomu atributu \texttt{depth}, kterı se nastavuje bìhem odstraòování koøenù v~\texttt{topSort()} a~znaèí, v~jaké nezávislé mnoinì leí. 
+
+\subsubsection{TraversalNode a TraversalGraph}
+
+\texttt{TraversalNode} spoleènì s~\texttt{TraversalGraph} umoòují paralelní procházení grafu viz~algoritmus~\ref{traversal}.
+
+\texttt{TraversalNode} je takté potomkem \texttt{Node}, kterı však implementuje rozhraní \texttt{Runnable}. \texttt{Runnable} øíká, e objekt mùe bıt spuštìn v~jiném vláknì, kde se zavolá jeho metoda \texttt{run()}. Tato tøída rozšiøuje \texttt{Node} o~atribut \texttt{finished\-Predecessors}, jen udává poèet ji dokonèenıch následníkù uzlu, dále o~\texttt{suc\-cessors}, co je~pole následovníkù uzlu, a~o~\texttt{executorService}.
+
+Rozhraní \texttt{java.util.concurrent.ExecutorService} je v~programovacím jazyku Java od~verze~1.5 a~umoòuje spuštìní asynchronních úloh na~pozadí. Aby bylo moné nìjakı objekt spustit pomocí metody \texttt{submit()}, musí implementovat rozhraní \texttt{Callable} èi~\texttt{Runnable}.\cite{javaDoc}
+
+\clearpage
+
+Ukázka metody \texttt{run()}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+public void run() {
+	synchronized (this) {
+		if (++finishedPredecessors < inDegree) {
+			return;
+		}
+	}
+	job.execute();
+	successors.forEach(executorService::submit);
+}
+\end{lstlisting}
+\end{algorithm}
+
+
+
+\texttt{TraversalGraph} je opìt graf tvoøen \texttt{TraversalNode} uzly. Metoda \texttt{get\-Roots()} vrací všechny koøeny grafu.
+
+\subsubsection{LatchNode a LatchGraph}
+
+\texttt{LatchNode} spoleènì s~\texttt{LatchGraph} umoòují paralelní spouštìní topologického uspoøádání, viz~algoritmus~\ref{latch}.
+
+\texttt{LatchNode} je znovu potomkem \texttt{Node} a~implementuje rozhraní \texttt{Runnable}. Navíc obsahuje dva atributy:
+
+\begin{itemize}
+	\item \texttt{latch} -- Objekt typu \texttt{java.util.concurrent.CountDownLatch}, kterı blokuje vıpoèet úlohy, dokud není jeho hodnota nastavena na~$ 0 $.
+	\item \texttt{decrements} -- Pole referencí na~instance \texttt{CountDownLatch} všech následníkù uzlu, na~kterıch se volá metoda \texttt{countDown()} po~dokonèení vıpoètu.
+\end{itemize}
+
+Ukázka implementace metody \texttt{run()}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+public void run() {
+	try {
+		latch.await();
+		job.execute();
+		decrements.forEach(CountDownLatch::countDown);
+	} catch (InterruptedException e) {
+		e.printStackTrace();
+	}
+}
+\end{lstlisting}
+\end{algorithm}
+
+\texttt{LatchGraph} je velmi podobnı \texttt{BasicGraph} -- zde se jen pøi~vytváøení grafu musí vytvoøit \texttt{CountDownLatch} pro~všechny uzly a~správnì jej napojit na~následníky a~pøedchùdce.
+
+\subsubsection{ReactiveNode a ReactiveGraph}
+
+\texttt{ReactiveNode} a~\texttt{ReactiveGraph} jsou skoro totoné s~\texttt{TraversalNode} a~s~\texttt{Tra\-versalGraph}. Ovšem zde je~pouito neblokující reaktivní API Reactor (viz~kapitola~\ref{reactorSection}) místo \texttt{ExecutorService}. \texttt{ReactiveNode} tudí neimplementuje rozhraní \texttt{Runnable}, má jen metodu \texttt{execute()}:
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+public void execute() {
+	synchronized (this) {
+		if (++finishedPredecessors < inDegree) {
+			return;
+		}
+	}
+	job.execute();
+	Flux.fromIterable(successors)
+		.flatMap(value ->
+			Mono.just(value)
+				.subscribeOn(Schedulers.elastic())
+				.doOnNext(ReactiveNode::execute),
+			64)
+		.subscribe();
+}
+\end{lstlisting}
+\end{algorithm}
+
+Reactor je zde pouit k~vytvoøení \texttt{Flux}, kterı obsahuje všechny následníky uzlu. Operátor \texttt{flatMap()} rozdìlí hodnoty, které \texttt{Flux} obsahuje, na~samostatnì fungující \texttt{Mono}. Toto \texttt{Mono} se paralelnì zpracovává díky pøíkazu \texttt{Schedulers.elastic()}. Argument~64 v~operátoru \texttt{flatMap()} udává poèet paralelnì pracujících \texttt{Mono}.\cite{reactorDoc}
+
+\subsection{Spouštìní úloh}
+
+Spouštìní úloh dle kapitoly~\ref{executionSection} je uloeno v~balíèku \texttt{strategies}. Tento balíèek obsahuje komponenty implementující rozhraní \texttt{ExecutionStrategy}, které spouští zadané úlohy. Jednotlivé strategie jsou zodpovìdné za~vytvoøení správného grafu a~následné vypoèítání úloh:
+
+\begin{itemize}
+	\item \texttt{SequentialExecutionStrategy} -- Vytvoøí pro~zadanou úlohu \texttt{Basic\-Graph}, z~nìho získáme pomocí metody \texttt{topSort()} topologické uspoøádání grafu. Úlohy jsou poté spuštìny sekvenènì v~poøadí topologického uspoøádání.
+	
+	\item \texttt{LayerExecutionStrategy} -- Vytvoøí pro~zadanou úlohu \texttt{BasicGraph}. Nezávislé mnoiny, které jsou poté za~sebou paralelnì spouštìny dle algoritmu~\ref{layer}, získáme voláním metody \texttt{getLayers()}.
+	
+	\item \texttt{TraversalExecutionStrategy} -- Vytvoøí pro~zadanou úlohu \texttt{Traversal\-Graph}, kde nám metoda \texttt{getRoots()} vrátí koøeny grafu, ve~kterıch zaène následné procházení (viz~algoritmus~\ref{traversal}).
+	
+	\item \texttt{ReactiveExecutionStrategy} -- Podobné \texttt{Traversal\-Execution\-Strate\-gy}. Je však pouit \texttt{ReactiveGraph} a~spouštìní obstarává reaktivní API Reactor z~kapitoly~\ref{reactorSection}. 
+	
+	\item \texttt{LatchExecutionStrategy} -- Vytvoøí pro~zadanou úlohu \texttt{LatchGraph}. Poté z~metody \texttt{topSort()} získáme topologické uspoøádání, které je~následnì paralelnì spuštìno za~synchronizace pomocí \texttt{CountDownLatch)} (viz~algoritmus~\ref{latch}).
+\end{itemize}
+
+\subsection{Implementace úloh}
+
+Základní implementace úloh pro~mìøení datové kvality se~nachází v~balíèku \texttt{quality}. Èlení se~na~další ètyøi balíèky:
+
+\begin{itemize}
+	\item \texttt{jobs} -- Implementace \texttt{Job}.
+	\item \texttt{listeners} -- Implementace \texttt{JobListener}
+	\item \texttt{results} -- Implementace \texttt{Result}.
+	\item \texttt{util} -- Pomocné tøídy, které se~vyuívají napø.~pøi~vıpoètech úloh.
+\end{itemize}
+
+V budoucnu se~plánuje rozšíøení tohoto balíèku v~závislosti na~dalších typech úloh.
+
+\subsubsection{Jobs}
+
+Balíèek \texttt{jobs} obsahuje tøi implementace úloh dle poadavkù v~kapitole~\ref{pozadavkySection}.
+
+Prvním typem úlohy je \texttt{SQLJob}, tedy SQL dotaz nad~databází. \texttt{SQLJob} dìdí z~\texttt{AbstractJob} a~implementuje \texttt{JDBCJob}. V~metodì \texttt{doExecute()} se jen nad~databází zavolá danı SQL dotaz a~hodnota se následnì uloí do~vısledku \texttt{StringResult}.
+
+Druhım typem úlohy je \texttt{ParametrizedSQLJob}, tedy parametrizovanı SQL dotaz. \texttt{ParametrizedSQLJob} rozšiøuje \texttt{AbstractJobContainer}, jeliko mùe obsahovat nìjaké úlohy, které potøebuje ke~svému vıpoètu. Také implementuje \texttt{JDBCJob}, protoe komunikuje s~databází. Metoda \texttt{doExecute()} nejdøíve správnì doplní do~SQL dotazu vısledky ze~závislıch úloh a~poté SQL dotaz provede. Jeho vısledek se opìt uloí jako typ \texttt{StringResult}.
+
+Posledním typem úlohy je \texttt{AggregateCheckJob}, nebo-li agregovanı vıpoèet z~vısledku jinıch úloh. \texttt{AggregateCheckJob} tedy musí dìdit z~\texttt{Abstract\-JobContainer}. Obsahuje pole èísel typu \texttt{Long}, které je pouito k~vıpoètu váeného prùmìru z~vısledkù zadanıch úloh. Jako vısledek je znovu pouit \texttt{StringResult}.
+
+\subsubsection{Listeners}
+
+Implementace rozhraní \texttt{JobListener} patøí do~balíèku \texttt{listeners}. Nyní obsahuje jen ukázkové implementace, slouící pøedevším k~vypisování informací na~vıstup. V~budoucnu se v~nich však mùe odehrávat napø.~pøenos vısledkù do~jiné aplikace.
+
+Pokud úloha obsahuje \texttt{TimingListener}, tak po~dokonèení jejího vıpoètu se~na~vıstup vypíše doba, která byla potøeba k~dopoèítání úlohy. \texttt{Progress\-MonitoringListener} zase vypisuje aktuální stav úloh, tedy kolik jich bylo spuštìno, kolik jich úspìšnì skonèilo a~kolik jich skonèilo s~chybou. \texttt{Reactive\-MessageListener} opìt jen vypisuje informace na~vıstup, ovšem je~to~ukázka reaktivního API Reactor z~kapitoly~\ref{reactorSection}.
+
+\subsubsection{Results}
+
+V~balíèku se nacházejí implementace rozhraní \texttt{Result}. Nyní však obsahuje jen jednu implementaci, a~to~\texttt{StringResult}, co je~jednoduchı vısledek, kterı obsahuje jeden atribut typu \texttt{String}.
+
+\subsubsection{Util}
+
+Balíèek \texttt{util} slouí jako jmennı prostor pro~pomocné tøídy, kterımi jsou napø. \texttt{DatabaseUtils} nebo~\texttt{SQLParser}.
+
+\texttt{DatabaseUtils} disponuje podpùrnımi funkcemi pøi~práci s~databázemi. Nyní obsahuje jen jednu statickou funkci \texttt{getOneResult()}, která zkontroluje, zda danı SQL vısledek obsahuje jen jeden záznam s~jedním sloupcem a~pokud ano, tak ho vrátí.
+
+\texttt{SQLParser} nahrazuje v~textovém øetìzci parametry typu \{\texttt{index}\}, kde \texttt{index} je~pøirozené èíslo, za~hodnoty z~dodaného pole. V~nástroji se vyuívá v~\texttt{ParametrizedSQLJob}, v nìm je~potøeba parametry nahradit vısledky SQL dotazù.
+
+\subsection{Testování}\label{testovaniSection}
+
+Kromì \textit{unit} testù, které testují funkènost jednotlivıch èástí kódu, jsem se~vìnoval i~vıkonnostnímu testování v~závislosti na~druhu spouštìní úloh. Tøídy potøebné k~vıkonnostním testùm jsou uloeny v~balíèku \texttt{test}. 
+
+V~tomto balíèku jsou tøi implementace úloh, které spouští metodu \texttt{sleep()}:
+
+\clearpage
+
+\begin{algorithm}
+\begin{lstlisting}[language=Java]
+private void sleep(long duration) {
+	boolean sleep = true;
+	long startTime = new Date().getTime();
+	while (sleep) {
+		if ((new Date().getTime()) - startTime >= duration) {
+			sleep = false;
+		}
+	}
+}
+\end{lstlisting}
+\end{algorithm}
+
+Ta~slouí k~napodobení spouštìní SQL dotazu, tedy zablokuje vlákno na~urèitı èas v~milisekundách dle~parametru \texttt{duration}. Kadá z~implementací volá metodu sleep s~jinım argumentem:
+
+\begin{itemize}
+	\item \texttt{TestAggregateJob} -- 5\,milisekund;
+	\item \texttt{TestParametrizedJob} -- 500\,milisekund;
+	\item \texttt{TestSimpleJob} -- 300\,milisekund.
+\end{itemize}
+
+\texttt{TestResult} je naivní implementace vısledku úlohy, která ukládá hodnotu typu \texttt{GraphGenerator}. \texttt{GraphGenerator} slouí ke~generování testovacích grafù. Metoda \texttt{generateJob()} vygeneruje graf s~celkovım poètem uzlù $ n^3+n^2+n+1 $, kde~$ n $ je~vstupní parametr metody. Pøesnìji se~vygeneruje $ n+1 $~úloh \texttt{TestAggregateJob}, $ n^2 $~úloh \texttt{TestParametrizedJob} a~$ n^3 $~úloh \texttt{TestSimpleJob}.
+
+Vıkonnostní testy jsou ve~tøídì \texttt{engine.strategies.PerformanceTests} a~lze s~nimi testovat všechny strategie. Konstanta \texttt{NODES\_NUMBER} urèuje parametr~$ N $ pro~generování grafu pomocí \texttt{GraphGenerator}. Konstanta \texttt{THREAD\-\_POOL} øíká, kolik maximálnì vláken lze vytvoøit.
+
+\subsection{Serverová aplikace}
+
+Balíèek \texttt{engine} obsahuje ètyøi tøídy, které se~zabıvají tím, aby~nástroj fungoval jako serverová aplikace.
+
+Nejdùleitìjší èástí je~tøída \texttt{Application}, která v~hlavní Java metodì \texttt{main()} spustí server a~nasadí na~nìj naši aplikaci pomocí \textit{frameworku} Spring Boot. Po~dobìhnutí této metody máme aplikaci spuštìnou na~adrese \url{http://localhost:8085}.
+
+\texttt{JobQueue} je~\textit{singleton}, tzn.~e v~aplikaci existuje jen jedna instance této tøídy. Tato instance tvoøí frontu úloh, které byly aplikaci poslány k~vıpoètu. Vyuívá k~tomu \texttt{java.util.concurrent.BlockingQueue}, co je~implementace fronty pro~vícevláknové pouití.\cite{javaDoc}
+
+\texttt{LaunchService} je~takté \textit{singleton}. Zároveò je~potomkem tøídy \texttt{Thread} a~mùe tedy bıt její metoda \texttt{run()} spuštìna ve~vlastním vláknì. K~tomu dochází ihned po~vytvoøení instance za~pouití anotace \texttt{@PostConstruct}. \texttt{LaunchService} obsahuje v~sobì \texttt{JobQueue} a~také jednu z~implementací \texttt{Ex\-ecutionStrategy}. V~tìle metody \texttt{run()} je poté nekoneènı cyklus, kterı bere prvky z~fronty a~spouští je~na~zadané strategii.
+
+\texttt{BasicTestController} je~jen ukázkou toho, jak~by mohla vypadat integrace pomocí Spring Webflux z~kapitoly~\ref{webfluxSection}. Díky této tøídì poslouchá naše aplikace HTTP poadavky, napø.~GET poadavek na~adrese \url{http://localhost:8085/{number}}, kde \texttt{number} je~jakékoliv èíslo, spustí metodu \texttt{run\-Test}. Tato metoda jen vygeneruje graf pomocí \texttt{GraphGenerator} s~parametrem \texttt{number}. Vygenerovanı graf je~poté pøidán do~fronty na~spuštìní.
+
+\section{Vısledky vıkonnostních testù}
+
+Nyní se~podíváme na~vısledky vıkonnostních testù, jen probíhaly na~notebooku s~procesorem Intel Core i5-4210U s~dvìma jádry a~ètyømi vlákny, s~8\,GB~RAM DDR3, s~Windows~10 a~Java verzí~1.8. Grafy pro~vıkonnostní testy budou generovány pomocí \texttt{GraphGenerator} viz~kapitola~\ref{testovaniSection}.
+
+Nejdøíve jsem potøeboval zjistit optimální poèet vláken, kterı má bıt vytvoøen. Vıpoèet úloh je~vìtšinu èasu tvoøen dotazem do~databáze, co~je~I/O operace. Pøi~paralelním zpracování I/O~operací je~doporuèeno vyuívat mnohem více jader, ne jich má procesor k~dispozici, i~kdy se~zvıší reie pøepínání kontextu. V~tabulkách \ref{tab2} a~\ref{tab3} mùeme vidìt závislost doby vıpoètu úloh s~danou strategií v~závislosti na~poètu vytvoøenıch vláken. V~tabulce~\ref{tab2} jsou zaznamenány vısledky z~grafu, kterı byl vygenerován pomocí \texttt{GraphGenerator.generate\-Job()} s~parametrem $ N=6 $ (258~uzlù), v~tabulce~\ref{tab3} s~parametrem $ N=10 $ (1111~uzlù). Vısledky v~obou tìchto tabulkách jsou v~sekundách zaokrouhlenıch na~desetiny a~poèítány byly jako prùmìr z~10 mìøenıch pokusù. \texttt{ReactiveStrategy} zde není testována, jeliko Reactor si øídí poèet vláken dynamicky sám.
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|l||*{3}{c|}}\hline
+			\textbf{Poèet vláken}
+			&\makebox[5em]{\textbf{Layer}}&\makebox[5em]{\textbf{Latch}}&\makebox[5em]{\textbf{Traversal}}\\\hline
+			  4           &  20,9  &   20,7   &   20,7   \\\hline
+			  8  		  &   11,4   &   11,1   &   11,3  \\\hline
+			  16   		  &    7,1   &    6,1   &    6,6  \\\hline
+			  32   		  &    4,3   &    3,9   &    4,2  \\\hline
+			  64   		  &    4,0   &    3,6   &    3,5  \\\hline
+			  128   	  &    3,9   &    3,7   &    3,8   \\\hline
+			  256   	  &    4,5   &    4,1   &    3,9  \\\hline
+		\end{tabular}
+		\caption{Doba vıpoètu úloh na grafu $ N=6 $}\label{tab2}
+	\end{center}
+\end{table}
+
+\clearpage
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|l||*{3}{c|}}\hline
+			\textbf{Poèet vláken}
+			&\makebox[5em]{\textbf{Layer}}&\makebox[5em]{\textbf{Latch}}&\makebox[5em]{\textbf{Traversal}}\\\hline
+			  4           &   90,2   &   90,3   &   90,3   \\\hline
+			  8  		  &   47,8   &   47,8   &   47,6  \\\hline
+			  16   		  &   25,9   &   25,5   &   25,4  \\\hline
+			  32   		  &   14,4   &   14,1   &   14,3  \\\hline
+			  64   		  &   11,9   &   11,4   &   11,3  \\\hline
+			  128   	  &   11,6   &   11,3   &   11,2   \\\hline
+			  200   	  &   11,4   &   10,8   &   11,4   \\\hline
+			  256   	  &   11,8   &   11,3   &   11,4  \\\hline
+		\end{tabular}
+		\caption{Doba vıpoètu úloh na grafu $ N=10 $}\label{tab3}
+	\end{center}
+\end{table}
+
+Z~tìchto vısledkù mùeme vyvodit nìkolik zajímavıch závìrù. První je~závislost mezi velikostí grafu a~poètem vláken. Doba vıpoètu se s~rostoucím poètem vláken sniuje, dokud není dosaena urèitá mez, kdy vìtší poèet vláken ji dobu vıpoètu zvyšuje, co je zpùsobeno pøepínání kontextu. Na~menším grafu z~tabulky~\ref{tab2} je tato mez mezi 64~a~128 vlákny, zatímco na~vìtším grafu z~tabulky \ref{tab3} a mezi 200~a~256 vlákny. Z~tìchto dvou mìøení mùeme øíci, e optimální poèet vláken je~roven~64, nebo v~pøípadì prvního mìøení~\ref{tab2} se pøi~vìtším poètu vláken rychlost vıpoètu zpomaluje a~v~pøípadì druhého mìøení ji není tak vıraznı rozdíl v~rychlosti mezi 64~a~200 vlákny. 
+
+Není ovšem moné z~mìøení urèit skuteènı optimální poèet vláken, nebo záleí na~mnoha faktorech -- velikosti grafu, závislosti mezi jednotlivımi úlohami, dobì trvání jednotlivıch úloh nebo procesoru a~pamìti poèítaèe. 
+
+Nyní se podíváme na~vıkon jednotlivıch strategií na~grafu vytvoøeného s~parametrem $ N $, kde poèet uzlù grafu je $ n^3+n^2+n+1 $. U~paralelních strategií byl nastaven maximální poèet vláken na~64. Vısledky vidíme v~tabulce~\ref{tab4}, pøièem hodnoty v~ní uvedené jsou opìt v~sekundách zaokrouhlenıch na~desetiny vypoètenıch z~prùmìru 10~mìøeních. 
+
+\clearpage
+
+\begin{table}[ht]
+	\begin{center}
+		\begin{tabular}{|l||*{5}{c|}}\hline
+			\textbf{N}
+			&\makebox[5em]{\textbf{Layer}}&\makebox[5em]{\textbf{Latch}}&\makebox[5em]{\textbf{Traversal}}&\makebox[5em]{\textbf{Reactive}}&\makebox[5em]{\textbf{Sequential}}\\\hline
+			   3     &  2,2  &  1,7  &  2,2  &  1,8  &  13,0  \\\hline
+			   4 	  &  2,3  &  2,2  &  2,2  &  2,3  &  28,1 \\\hline
+			   5  	  &  2,9  &  2,7  &  2,9  &  3,2  &  51,5 \\\hline
+			   6  	  &  3,9  &  3,5  &  3,6  &  4,2  &  85,2 \\\hline
+			   7  	  &  5,1  &  4,9  &  4,8  &  5,6  &  131,2 \\\hline
+			   8  	  &  6,7  &  6,4  &  6,4  &  7,2  &  191,0 \\\hline
+			   9  	  &  9,2  &  8,5  &  9,0  &  9,6  &  266,5 \\\hline
+			  10     &  12,1  &  11,3  &  11,9  &  11,8  &  359,2  \\\hline
+			  20     &  78,9  &  77,9  &  77,4  &  76,8  &   -   \\\hline
+			  30     &  253,3  &  252,5  &  252,5  &  233,2  &   -   \\\hline
+			  40     &  592,8  &  587,1  &  594,5  &  592,3  &   -   \\\hline
+		\end{tabular}
+		\caption{Doba vıpoètu úloh v závislosti na velikosti grafu}\label{tab4}
+	\end{center}
+\end{table}
+
+Z~vısledku mùeme vyèíst jednoznaènı úspìch paralelního spouštìní úloh, jen u~grafu velikosti $ N=10 $ dosahuje a skoro 32krát rychlejšího èasu ne~u~sekvenèního spouštìní. Rozdíly mezi jednotlivımi paralelními strategiemi jsou velmi malé a~je~tedy tìké urèit nejlepší z~nich, jeliko se mùe jednat jen o~odchylky v~mìøení. 
+\texttt{ReactiveStrategy} dosahuje velmi dobrıch vısledku pøedevším na~vìtších grafech. Dùvodem je~však dynamické vytváøení vláken, které si Reactor øídí sám. Mohl tedy vytvoøit více ne 64~vláken, které pouívají ostatní strategie, co se projeví právì lepším èasem u~velkıch grafù.
+\texttt{LayerStrategy} také nedosahuje špatnıch vısledkù, ovšem nikdy nebyla nejrychlejší strategií. Vıhodou pro~ni bylo, e se testovalo na~grafu, kterı z~vìtšiny èasu vıpoètu umoòuje plné zapojení všech jader procesoru.
+\texttt{LatchStrategy} a~\texttt{TraversalStrategy} jsou, co se tıká doby bìhu, velmi vyrovnané strategie. 
+
+Na~základì tìchto vısledku bych doporuèoval pouití \texttt{LatchStrategy}. Oproti \texttt{TraversalStrategy} je~vıhodou, e nevytváøí tolik vláken a~ve~vìtšinì pøípadech dosahovala lepších vısledkù.
+
+\begin{conclusion}
+	
+Cílem této práce bylo vytvoøení nástroje pro~mìøení datové kvality. Datová kvalita je~mìøena spouštìním rùznıch úloh, napø.~SQL dotazù, které jsou mezi sebou závislé, a~tak tvoøí acyklickı orientovanı graf. Nástroj tedy musí tyto úlohy umìt spouštìt ve~správném poøadí, a~to~i~paralelnì. Dále bylo potøeba zanalyzovat aplikaci Jenkins~CI, knihovnu Spring Integration a~reaktivní programování. Na~základì této analızy jsem mìl zváit pouití Jenkins~CI k~implementaci a~vybrat správné øešení pro~budoucí integraci nástroje s~jinou aplikací.
+
+Vytvoøenı nástroj umoòuje sekvenèní i~paralelní spouštìní úloh. Pro~paralelní spouštìní je~implementováno nìkolik algoritmù, které byly vıkonnostnì otestovány. Pro~úlohy je~vytvoøeno rozhraní, které obsahuje základní úlohy, jakım je~tøeba SQL dotaz, ale umoòuje i~jednoduché pøidávání dalších typù úloh. Zároveò nástroj funguje samostatnì jako serverová aplikace. K~implementaci nebylo vyuito aplikace Jenkins~CI, jeliko to~je~velmi sloitı projekt a~vybrat z~nìj jen tu~èást podobnou našemu nástroji by~bylo sloité. Pro~budoucí integraci nástroje s~jinou aplikací jsem doporuèil v~pøípadì vyuití rozhraní REST nebo WebSocket novou knihovnu Spring Webflux, zatímco v~jiném pøípadì je~vhodnı Spring Integration.
+
+Aplikace je~pøipravena do~budoucnosti na~pøípadná vylepšení. Kromì integrace s jinou aplikací, kterou jsem v práci analyzoval, by~bylo moné pøidat další implementace úloh mìøících datovou kvalitu a~jejich vısledkù. V~budoucnu by nástroj mohl podporovat pøíkazy pro~vypnutí, pozastavení a~pokraèování v~rámci vıpoètu úloh.
+
+\end{conclusion}
+
+\bibliographystyle{csn690}
+\bibliography{mybibliographyfile}
+
+\appendix
+
+\chapter{Seznam pouitıch pojmù a zkratek}
+% \printglossaries
+\begin{description}
+	\item[API] -- \textbf{Application Programming Interface} je rozhraní pro programování aplikací.
+	\item[BI] -- \textbf{Business intelligence} je mnoina konceptù a~metodik, které se pouívají pøi~práci s~firemními daty.
+	\item[Callback] -- Volání èásti programu, kterı se vykoná v rámci bìhu jiného programu.
+	\item[CI] -- \textbf{Continuous integration} jsou metody a nástroje k urychlení vıvoje softwaru.
+	\item[Deadlock] -- Uváznutí programu vlivem špatné synchronizace paralelního vıpoètu.
+	\item[DFS] -- \textbf{Depth-first search} je algoritmus prohledávaní grafu do hloubky.
+	\item[DSL] -- \textbf{Doménovì specifickı jazyk} je programovací jazyk zamìøen na jeden specifickı problém.
+	\item[DWH] -- \textbf{Data warehouse} -- datovı sklad, úloištì pro velké mnoství dat.
+	\item[ETL] -- \textbf{Extract, transform, load} se nazıvá fáze Business intelligence, pøi které dochází k získání, transformování a nahrání dat.
+	\item[Framework] -- Aplikaèní rámec, jen poskytuje rùzné programy a knihovny.
+	\item[Getter] -- Metoda objektu, která vrací jeho atribut.
+	\item[HTTP] -- \textbf{Hypertext Transfer Protocol} je internetovı protokol.
+	\item[I/O] -- \textbf{Input/Output} nebo-li vstup/vıstup.
+	\item[JRE] -- \textbf{Java Runtime Environment} je rozhraní pro spouštìní Java aplikací.
+	\item[JSON] -- \textbf{JavaScript Object Notation} je zpùsob zápisu dat.
+	\item[JVM] -- \textbf{Java Virtual Machine} je virtuální stroj spouštìjící Java aplikace.
+	\item[Message-driven architektura] -- Architektura zaloena na posílání zpráv (zprávami øízená architektura).
+	\item[Open source] -- Poèítaèovı program s otevøenım zdrojovım kódem.
+	\item[Package] -- Jmennı prostor slouící k organizaci Java tøíd.
+	\item[POJO] -- \textbf{Plain Old Java Object} je obyèejnı Java objekt.
+	\item[REST] -- \textbf{Representational State Transfer} je rozhraní postavené na HTTP.
+	\item[Setter] -- Metoda objektu, která nastavuje jeho atribut.
+	\item[Singleton] -- Návrhovı vzor, kterı zajišuje aby v aplikaci existovala jen jedna instance dané tøídy.
+	\item[SSE] -- \textbf{Server-sent events} je technologie pro automatické posílání zpráv klientovi ze serveru.
+	\item[SQL] -- \textbf{Structured Query Language} je jazyk pro práci s daty v relaèních databázích.
+	\item[URI] -- \textbf{Uniform Resource Identifier} nebo-li jednotnı identifikátor zdroje.
+	\item[XML] -- \textbf{Extensible markup language} je znaèkovací jazyk pouívající se pro~serializaci dat.
+	\item[WAR] -- \textbf{Web application Archive} je formát souboru pro uchovávání webovıch aplikacích napsanıch v programovacím jazyku Java.
+\end{description}
+
+
+\chapter{Obsah pøiloeného CD}
+
+\begin{figure}
+	\dirtree{%
+		.1 readme.txt\DTcomment{struènı popis obsahu CD}.
+		.1 src.
+		.2 impl\DTcomment{zdrojové kódy implementace}.
+		.2 thesis\DTcomment{zdrojová forma práce ve formátu \LaTeX{}}.
+		.1 text\DTcomment{text práce}.
+		.2 BP\_Maly\_Vojtech\_2017.pdf\DTcomment{text práce ve formátu PDF}.
+	}
+\end{figure}
+
+\end{document}
